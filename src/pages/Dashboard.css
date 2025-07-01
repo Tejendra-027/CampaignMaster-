@@ -1,0 +1,80 @@
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 200px;
+  transition: width 0.3s ease-in-out;
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  margin: 1rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.nav-items {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0.5rem;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0.75rem;
+  color: #333;
+  text-decoration: none;
+  font-size: 1rem;
+  transition: background-color 0.2s ease;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.nav-link .icon {
+  width: 24px;
+  text-align: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.nav-text {
+  margin-left: 12px;
+  opacity: 1;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.sidebar.collapsed .nav-text {
+  opacity: 0;
+  transform: translateX(-10px);
+  pointer-events: none;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background-color: #f0f0f0;
+}
+
+.dashboard-main {
+  flex: 1;
+  padding: 1.5rem;
+  background-color: #f9f9f9;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
+}
