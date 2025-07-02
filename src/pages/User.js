@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaTrashAlt, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
+import { ToastContainer, toast } from 'react-toastify';
+import { confirmAlert } from 'react-confirm-alert';
+import 'react-toastify/dist/ReactToastify.css';
+import 'react-confirm-alert/src/react-confirm-alert.css';
 import './User.css';
+
+const BASE_URL = 'http://localhost:3000';
 
 const User = () => {
   const [users, setUsers] = useState([]);
@@ -12,11 +18,11 @@ const User = () => {
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line
-  }, [token]);
+  }, []);
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/user/list', {
+      const res = await axios.get(`${BASE_URL}/user/list`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -24,20 +30,38 @@ const User = () => {
       setUsers(res.data);
     } catch (err) {
       console.error('Failed to fetch users:', err);
+      toast.error('Failed to load users');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+  const confirmDelete = (id) => {
+    confirmAlert({
+      title: 'Confirm Delete',
+      message: 'Are you sure you want to delete this user?',
+      buttons: [
+        {
+          label: 'Yes',
+          onClick: () => deleteConfirmed(id),
+        },
+        {
+          label: 'No',
+        },
+      ],
+    });
+  };
+
+  const deleteConfirmed = async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/user/${id}`, {
+      await axios.delete(`${BASE_URL}/auth/user/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       setUsers(users.filter((u) => u.id !== id));
+      toast.success('User deleted successfully');
     } catch (err) {
-      alert('Failed to delete user. Only admin can delete users.');
+      toast.error('Failed to delete user. Only admin can delete users.');
+      console.error(err);
     }
   };
 
@@ -63,7 +87,7 @@ const User = () => {
 
   const handleEditSave = async (id) => {
     try {
-      await axios.put(`http://localhost:3000/user/${id}`, editData, {
+      await axios.put(`${BASE_URL}/user/${id}`, editData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -71,13 +95,16 @@ const User = () => {
       setUsers(users.map((u) => (u.id === id ? { ...u, ...editData } : u)));
       setEditId(null);
       setEditData({});
+      toast.success('User updated successfully');
     } catch (err) {
-      alert('Failed to update user.');
+      toast.error('Failed to update user.');
+      console.error(err);
     }
   };
 
   return (
     <div className="user-page">
+      <ToastContainer />
       <h2 className="user-title">Users List</h2>
       <div className="user-table-container">
         <table className="user-table">
@@ -154,6 +181,7 @@ const User = () => {
                   <td className="user-password">
                     {editId === u.id ? (
                       <input
+                        type="password"
                         name="password"
                         value={editData.password}
                         onChange={handleEditChange}
@@ -161,7 +189,7 @@ const User = () => {
                         style={{ width: 180 }}
                       />
                     ) : (
-                      u.password
+                      '••••••••'
                     )}
                   </td>
                   <td>
@@ -192,7 +220,7 @@ const User = () => {
                           <FaEdit />
                         </button>
                         <button
-                          onClick={() => handleDelete(u.id)}
+                          onClick={() => confirmDelete(u.id)}
                           className="user-delete-btn"
                           title="Delete"
                         >

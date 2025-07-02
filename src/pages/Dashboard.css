@@ -28,10 +28,19 @@
   align-self: flex-start;
 }
 
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-grow: 1;
+  padding-bottom: 1rem;
+}
+
 .nav-items {
   display: flex;
   flex-direction: column;
   padding: 0 0.5rem;
+  gap: 0.5rem;
 }
 
 .nav-link {
@@ -69,6 +78,24 @@
 .nav-link:hover,
 .nav-link.active {
   background-color: #f0f0f0;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 10px 20px;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.logout-btn:hover {
+  background-color: #f44336;
+  color: white;
 }
 
 .dashboard-main {
