@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register'; // 👈 Added Register import
 import Dashboard from './pages/Dashboard';
 import User from './pages/User';
 import PrivateRoute from './components/PrivateRoute';
@@ -13,6 +14,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} /> {/* 👈 Register route added */}
 
         {/* Protected Routes */}
         <Route
@@ -27,7 +29,7 @@ function App() {
           {/* <Route path="lists" element={<Lists />} /> */}
         </Route>
 
-        {/* Fallback */}
+        {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

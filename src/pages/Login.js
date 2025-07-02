@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
 import loginVisual from '../assets/Login-pana.png';
 
@@ -14,7 +14,6 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      // Determine if input is an email or mobile number
       const isEmail = /\S+@\S+\.\S+/.test(loginValue);
       const payload = isEmail
         ? { email: loginValue, password }
@@ -60,7 +59,7 @@ const Login = () => {
           </div>
           <button type="submit">Login</button>
           <div className="login-footer">
-            Don’t have an account? <a href="#">Register</a>
+            Don’t have an account? <Link to="/register">Register</Link>
           </div>
         </form>
       </div>

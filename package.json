@@ -17,8 +17,10 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.6.2",
     "react-scripts": "5.0.1",
+    "react-select": "^5.10.1",
     "react-toastify": "^11.0.5",
     "redux": "^5.0.1",
+    "sweetalert2": "^11.22.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
