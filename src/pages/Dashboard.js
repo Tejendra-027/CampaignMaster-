@@ -20,10 +20,10 @@ const Dashboard = () => {
           &#9776;
         </button>
         <nav className="nav-items">
-          <NavLink to="users" className="nav-link">
+          <NavLink to="/dashboard/users" className="nav-link">
             <FaUser className="icon" /> <span className="nav-text">Users</span>
           </NavLink>
-          <NavLink to="lists" className="nav-link">
+          <NavLink to="/dashboard/lists" className="nav-link">
             <FaList className="icon" /> <span className="nav-text">Lists</span>
           </NavLink>
         </nav>

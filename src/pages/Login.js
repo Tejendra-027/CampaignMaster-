@@ -1,22 +1,30 @@
-// src/pages/Login.js
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { login } from '../features/auth/authSlice';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import loginVisual from '../assets/Login-pana.png';
 
 const Login = () => {
-  const [mobile, setMobile] = useState('');
+  const [loginValue, setLoginValue] = useState('');
   const [password, setPassword] = useState('');
-  const dispatch = useDispatch();
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (mobile && password) {
-      dispatch(login({ mobile }));
+    setError('');
+    try {
+      // Determine if input is an email or mobile number
+      const isEmail = /\S+@\S+\.\S+/.test(loginValue);
+      const payload = isEmail
+        ? { email: loginValue, password }
+        : { mobile: loginValue, password };
+
+      const res = await axios.post('http://localhost:3000/auth/login', payload);
+      localStorage.setItem('token', res.data.token);
       navigate('/dashboard');
+    } catch (err) {
+      setError('Invalid email/mobile or password');
     }
   };
 
@@ -28,18 +36,15 @@ const Login = () => {
         </div>
         <form className="login-form" onSubmit={handleSubmit}>
           <h2>Welcome Back</h2>
-          <p className="login-subtext">Please enter your mobile number and password</p>
-
+          <p className="login-subtext">Please enter your email or mobile number and password</p>
+          {error && <div style={{ color: 'red', marginBottom: 10 }}>{error}</div>}
           <input
-            type="tel"
-            placeholder="Mobile number"
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
-            pattern="[0-9]{10}"
-            maxLength={10}
+            type="text"
+            placeholder="Email or Mobile number"
+            value={loginValue}
+            onChange={(e) => setLoginValue(e.target.value)}
             required
           />
-
           <input
             type="password"
             placeholder="Password"
@@ -47,16 +52,13 @@ const Login = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-
           <div className="login-options">
             <label>
               <input type="checkbox" /> Remember me
             </label>
             <a href="#">Forgot password?</a>
           </div>
-
           <button type="submit">Login</button>
-
           <div className="login-footer">
             Don’t have an account? <a href="#">Register</a>
           </div>
