@@ -4,7 +4,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import User from './pages/User';
-import Lists from './pages/Lists'; 
+import Lists from './pages/Lists';
+import ListItems from './pages/ListItems'; // ✅ Import ListItems
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
@@ -26,7 +27,8 @@ function App() {
           }
         >
           <Route path="users" element={<User />} />
-          <Route path="lists" element={<Lists />} /> {/* ✅ Added Lists route */}
+          <Route path="lists" element={<Lists />} />
+          <Route path="lists/:id/items" element={<ListItems />} /> {/* ✅ Add this */}
         </Route>
 
         {/* Fallback Route */}
