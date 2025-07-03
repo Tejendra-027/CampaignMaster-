@@ -1,11 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Register from './pages/Register'; // 👈 Added Register import
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import User from './pages/User';
+import Lists from './pages/Lists'; 
 import PrivateRoute from './components/PrivateRoute';
-// import Lists from './pages/Lists';
 
 function App() {
   return (
@@ -14,7 +14,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} /> {/* 👈 Register route added */}
+        <Route path="/register" element={<Register />} />
 
         {/* Protected Routes */}
         <Route
@@ -26,7 +26,7 @@ function App() {
           }
         >
           <Route path="users" element={<User />} />
-          {/* <Route path="lists" element={<Lists />} /> */}
+          <Route path="lists" element={<Lists />} /> {/* ✅ Added Lists route */}
         </Route>
 
         {/* Fallback Route */}
