@@ -4,18 +4,40 @@ import './Dashboard.css';
 import { FaUser, FaList, FaEnvelope, FaSignOutAlt } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import axios from 'axios';
 
 const Dashboard = () => {
   const [isOpen, setIsOpen] = useState(true);
+  const [firstListId, setFirstListId] = useState(null);
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
 
   // Check for JWT token on mount
   useEffect(() => {
-    const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
     }
-  }, [navigate]);
+  }, [navigate, token]);
+
+  // Fetch first list ID for dynamic link
+  useEffect(() => {
+    const fetchFirstList = async () => {
+      try {
+        const res = await axios.get('http://localhost:3000/list', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const lists = res.data?.data || res.data;
+        if (Array.isArray(lists) && lists.length > 0) {
+          setFirstListId(lists[0].id);
+        }
+      } catch (err) {
+        console.error('❌ Failed to fetch lists:', err);
+      }
+    };
+
+    fetchFirstList();
+  }, [token]);
 
   // Toggle sidebar collapse
   const toggleSidebar = useCallback(() => {
@@ -62,13 +84,15 @@ const Dashboard = () => {
               <span className="nav-text">Lists</span>
             </NavLink>
 
-            <NavLink
-              to="/dashboard/lists/1/items" // Example route; you can use dynamic link when coming from list view
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <FaEnvelope className="icon" />
-              <span className="nav-text">List Items</span>
-            </NavLink>
+            {firstListId && (
+              <NavLink
+                to={`/dashboard/lists/${firstListId}/items`}
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              >
+                <FaEnvelope className="icon" />
+                <span className="nav-text">List Items</span>
+              </NavLink>
+            )}
           </nav>
 
           <button className="nav-link logout-btn" onClick={handleLogout}>

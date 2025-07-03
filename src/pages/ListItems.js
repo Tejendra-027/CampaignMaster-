@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { Modal, Button, Form } from 'react-bootstrap';
-import { PencilFill, TrashFill, Plus } from 'react-bootstrap-icons';
+import { PencilFill, TrashFill, Plus, Upload } from 'react-bootstrap-icons';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import { useParams } from 'react-router-dom';
@@ -22,14 +22,16 @@ function ListItems() {
   const [editMode, setEditMode] = useState(false);
   const [currentItem, setCurrentItem] = useState({ id: '', email: '', name: '' });
 
+  const [csvModal, setCsvModal] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
   const token = localStorage.getItem('token');
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const baseUrl = `http://localhost:3000/list/item/filter`;
-      const params = new URLSearchParams();
-      params.append('listId', listId);
+      const params = new URLSearchParams({ listId });
 
       if (search) {
         params.append('search', search);
@@ -39,7 +41,7 @@ function ListItems() {
         params.append('limit', 10);
       }
 
-      const res = await axios.get(`${baseUrl}?${params.toString()}`, {
+      const res = await axios.get(`http://localhost:3000/list/item/filter?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -71,13 +73,8 @@ function ListItems() {
   };
 
   const handleOpenModal = (item = null) => {
-    if (item) {
-      setCurrentItem({ id: item.id, name: item.name, email: item.email });
-      setEditMode(true);
-    } else {
-      setCurrentItem({ id: '', name: '', email: '' });
-      setEditMode(false);
-    }
+    setCurrentItem(item ? { id: item.id, name: item.name, email: item.email } : { id: '', name: '', email: '' });
+    setEditMode(!!item);
     setShowModal(true);
   };
 
@@ -95,41 +92,21 @@ function ListItems() {
 
       const method = editMode ? axios.put : axios.post;
 
-      await method(
-        endpoint,
-        {
-          name: currentItem.name,
-          email: currentItem.email,
-          listId: Number(listId)
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      MySwal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: editMode ? '✅ Item updated!' : '✅ Item added!',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true
+      await method(endpoint, {
+        name: currentItem.name,
+        email: currentItem.email,
+        listId: Number(listId)
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
+
+      MySwal.fire({ toast: true, position: 'top-end', icon: 'success', title: editMode ? '✅ Updated!' : '✅ Added!' });
 
       handleCloseModal();
       fetchItems();
     } catch (err) {
       console.error('❌ Save failed:', err);
-      MySwal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'error',
-        title: 'Failed to save item.',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true
-      });
+      MySwal.fire('Error', 'Failed to save item.', 'error');
     }
   };
 
@@ -139,9 +116,7 @@ function ListItems() {
       text: 'You will not be able to recover this item!',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true
+      confirmButtonText: 'Yes, delete it!'
     });
 
     if (confirm.isConfirmed) {
@@ -150,29 +125,37 @@ function ListItems() {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        MySwal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'success',
-          title: '🗑️ Item deleted!',
-          showConfirmButton: false,
-          timer: 2000,
-          timerProgressBar: true
-        });
-
+        MySwal.fire({ toast: true, position: 'top-end', icon: 'success', title: '🗑️ Deleted!' });
         fetchItems();
       } catch (err) {
         console.error('❌ Delete failed:', err);
-        MySwal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'error',
-          title: 'Failed to delete item.',
-          showConfirmButton: false,
-          timer: 2000,
-          timerProgressBar: true
-        });
+        MySwal.fire('Error', 'Failed to delete item.', 'error');
       }
+    }
+  };
+
+  const handleUploadCSV = async () => {
+    if (!csvFile || uploading) return;
+
+    const formData = new FormData();
+    formData.append('file', csvFile);
+    formData.append('listId', listId);
+
+    try {
+      setUploading(true);
+      await axios.post('http://localhost:3000/list/item/upload', formData, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      });
+
+      setCsvFile(null);
+      setCsvModal(false);
+      MySwal.fire({ toast: true, icon: 'success', title: '📤 CSV uploaded!' });
+      fetchItems();
+    } catch (err) {
+      console.error('❌ Upload failed:', err);
+      MySwal.fire('Error', 'Failed to upload CSV.', 'error');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -180,9 +163,14 @@ function ListItems() {
     <div className="list-container">
       <div className="list-header">
         <h2>📧 List Items</h2>
-        <button className="add-button" onClick={() => handleOpenModal()}>
-          <Plus /> Add Item
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="upload-button" onClick={() => setCsvModal(true)}>
+            <Upload /> Upload CSV
+          </button>
+          <button className="add-button" onClick={() => handleOpenModal()}>
+            <Plus /> Add Item
+          </button>
+        </div>
       </div>
 
       <div className="search-bar">
@@ -209,9 +197,7 @@ function ListItems() {
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr>
-                <td colSpan="4" className="no-data">No items found.</td>
-              </tr>
+              <tr><td colSpan="4" className="no-data">No items found.</td></tr>
             ) : (
               items.map((item) => (
                 <tr key={item.id}>
@@ -241,6 +227,7 @@ function ListItems() {
         </div>
       )}
 
+      {/* Add/Edit Item Modal */}
       <Modal show={showModal} onHide={handleCloseModal} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? 'Edit Item' : 'Add New Item'}</Modal.Title>
@@ -251,7 +238,6 @@ function ListItems() {
               <Form.Label>Name</Form.Label>
               <Form.Control
                 type="text"
-                placeholder="Enter name"
                 value={currentItem.name}
                 onChange={(e) => setCurrentItem({ ...currentItem, name: e.target.value })}
                 required
@@ -261,7 +247,6 @@ function ListItems() {
               <Form.Label>Email</Form.Label>
               <Form.Control
                 type="email"
-                placeholder="Enter email"
                 value={currentItem.email}
                 onChange={(e) => setCurrentItem({ ...currentItem, email: e.target.value })}
                 required
@@ -270,11 +255,35 @@ function ListItems() {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-            <Button variant="primary" type="submit">
-              {editMode ? 'Update' : 'Create'}
-            </Button>
+            <Button variant="primary" type="submit">{editMode ? 'Update' : 'Create'}</Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Upload CSV Modal */}
+      <Modal show={csvModal} onHide={() => setCsvModal(false)} backdrop="static">
+        <Modal.Header closeButton>
+          <Modal.Title>📤 Upload CSV File</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>Select CSV file</Form.Label>
+            <Form.Control
+              type="file"
+              accept=".csv"
+              onChange={(e) => setCsvFile(e.target.files[0])}
+              disabled={uploading}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setCsvModal(false)} disabled={uploading}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleUploadCSV} disabled={!csvFile || uploading}>
+            {uploading ? 'Uploading...' : 'Upload'}
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
