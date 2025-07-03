@@ -1,4 +1,4 @@
-/* ListItems.css */
+/* List Container */
 .list-container {
   max-width: 1000px;
   margin: 40px auto;
@@ -9,6 +9,7 @@
   font-family: 'Segoe UI', sans-serif;
 }
 
+/* Header Section */
 .list-header {
   display: flex;
   justify-content: space-between;
@@ -22,6 +23,7 @@
   color: #343a40;
 }
 
+/* Buttons */
 .add-button,
 .upload-button {
   background-color: #007bff;
@@ -49,6 +51,7 @@
   background-color: #117a8b;
 }
 
+/* Search Bar */
 .search-bar {
   display: flex;
   gap: 10px;
@@ -78,6 +81,7 @@
   background-color: #218838;
 }
 
+/* Table Styles */
 .list-table {
   width: 100%;
   border-collapse: collapse;
@@ -108,6 +112,7 @@
   font-style: italic;
 }
 
+/* Action Buttons */
 .action-buttons {
   display: flex;
   justify-content: center;
@@ -148,6 +153,7 @@
   color: white;
 }
 
+/* Pagination */
 .pagination {
   display: flex;
   justify-content: center;
@@ -172,6 +178,7 @@
   cursor: not-allowed;
 }
 
+/* Loading Text */
 .loading {
   text-align: center;
   font-style: italic;
@@ -179,11 +186,11 @@
   margin: 20px 0;
 }
 
-/* 🔄 NEW: Modal and File Upload Enhancements */
+/* Modal Enhancements */
 .modal-content {
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 /* Upload Section */

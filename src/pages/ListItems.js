@@ -4,11 +4,14 @@ import { Modal, Button, Form } from 'react-bootstrap';
 import { PencilFill, TrashFill, Plus } from 'react-bootstrap-icons';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { useParams } from 'react-router-dom';
 import './ListItems.css';
 
 const MySwal = withReactContent(Swal);
 
 function ListItems() {
+  const { id: listId } = useParams();
+
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -26,6 +29,7 @@ function ListItems() {
     try {
       const baseUrl = `http://localhost:3000/list/item/filter`;
       const params = new URLSearchParams();
+      params.append('listId', listId);
 
       if (search) {
         params.append('search', search);
@@ -55,11 +59,11 @@ function ListItems() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, token]);
+  }, [page, search, token, listId]);
 
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    if (listId) fetchItems();
+  }, [fetchItems, listId]);
 
   const handleSearch = () => {
     setPage(1);
@@ -91,12 +95,17 @@ function ListItems() {
 
       const method = editMode ? axios.put : axios.post;
 
-      await method(endpoint, {
-        name: currentItem.name,
-        email: currentItem.email
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await method(
+        endpoint,
+        {
+          name: currentItem.name,
+          email: currentItem.email,
+          listId: Number(listId)
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
       MySwal.fire({
         toast: true,
@@ -112,7 +121,15 @@ function ListItems() {
       fetchItems();
     } catch (err) {
       console.error('❌ Save failed:', err);
-      MySwal.fire('Error', 'Failed to save item.', 'error');
+      MySwal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'error',
+        title: 'Failed to save item.',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true
+      });
     }
   };
 
@@ -146,7 +163,15 @@ function ListItems() {
         fetchItems();
       } catch (err) {
         console.error('❌ Delete failed:', err);
-        MySwal.fire('Error', 'Failed to delete item.', 'error');
+        MySwal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'error',
+          title: 'Failed to delete item.',
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true
+        });
       }
     }
   };
@@ -216,7 +241,7 @@ function ListItems() {
         </div>
       )}
 
-      <Modal show={showModal} onHide={handleCloseModal}>
+      <Modal show={showModal} onHide={handleCloseModal} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? 'Edit Item' : 'Add New Item'}</Modal.Title>
         </Modal.Header>
