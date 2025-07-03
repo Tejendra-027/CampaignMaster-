@@ -83,6 +83,18 @@ function ListItems() {
     setCurrentItem({ id: '', name: '', email: '' });
   };
 
+  const showToast = (icon, title) => {
+    MySwal.fire({
+      toast: true,
+      icon,
+      title,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true
+    });
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -100,8 +112,7 @@ function ListItems() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      MySwal.fire({ toast: true, position: 'top-end', icon: 'success', title: editMode ? '✅ Updated!' : '✅ Added!' });
-
+      showToast('success', editMode ? '✅ Updated!' : '✅ Added!');
       handleCloseModal();
       fetchItems();
     } catch (err) {
@@ -125,7 +136,7 @@ function ListItems() {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        MySwal.fire({ toast: true, position: 'top-end', icon: 'success', title: '🗑️ Deleted!' });
+        showToast('success', '🗑️ Deleted!');
         fetchItems();
       } catch (err) {
         console.error('❌ Delete failed:', err);
@@ -149,7 +160,7 @@ function ListItems() {
 
       setCsvFile(null);
       setCsvModal(false);
-      MySwal.fire({ toast: true, icon: 'success', title: '📤 CSV uploaded!' });
+      showToast('success', '📤 CSV uploaded!');
       fetchItems();
     } catch (err) {
       console.error('❌ Upload failed:', err);
