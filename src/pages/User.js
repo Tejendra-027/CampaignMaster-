@@ -72,7 +72,7 @@ const User = () => {
       email: user.email,
       mobileCountryCode: user.mobileCountryCode,
       mobile: user.mobile,
-      password: user.password,
+      newPassword: '', // ✅ For admin to input new password
     });
   };
 
@@ -87,12 +87,28 @@ const User = () => {
 
   const handleEditSave = async (id) => {
     try {
+      // Update basic user info
       await axios.put(`${BASE_URL}/user/${id}`, editData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      setUsers(users.map((u) => (u.id === id ? { ...u, ...editData } : u)));
+
+      // Reset password if newPassword is provided
+      if (editData.newPassword && editData.newPassword.trim() !== '') {
+        await axios.put(`${BASE_URL}/user/reset-password/${id}`, {
+          newPassword: editData.newPassword,
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+
+      // Update UI
+      setUsers(users.map((u) =>
+        u.id === id ? { ...u, ...editData, password: '••••••••' } : u
+      ));
       setEditId(null);
       setEditData({});
       toast.success('User updated successfully');
@@ -182,8 +198,9 @@ const User = () => {
                     {editId === u.id ? (
                       <input
                         type="password"
-                        name="password"
-                        value={editData.password}
+                        name="newPassword"
+                        placeholder="Reset Password"
+                        value={editData.newPassword}
                         onChange={handleEditChange}
                         className="user-edit-input"
                         style={{ width: 180 }}

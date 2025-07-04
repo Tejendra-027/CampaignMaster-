@@ -151,7 +151,7 @@ function Lists() {
   return (
     <div className="list-container">
       <div className="list-header">
-        <h2>📋 List Manager</h2>
+        <h2>  List Manager</h2>
         <button className="add-button" onClick={() => handleOpenModal()}>
           <Plus /> Add List
         </button>
@@ -227,7 +227,7 @@ function Lists() {
               <Form.Label>Enter list name</Form.Label>
               <Form.Control
                 type="text"
-                placeholder="Enter name"
+                placeholder="Enter event name"
                 value={currentList.name}
                 onChange={(e) => setCurrentList({ ...currentList, name: e.target.value })}
                 required

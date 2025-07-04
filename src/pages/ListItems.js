@@ -173,7 +173,7 @@ function ListItems() {
   return (
     <div className="list-container">
       <div className="list-header">
-        <h2>📧 List Items</h2>
+        <h2>  List Items</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="upload-button" onClick={() => setCsvModal(true)}>
             <Upload /> Upload CSV
@@ -246,18 +246,24 @@ function ListItems() {
         <Form onSubmit={handleFormSubmit}>
           <Modal.Body>
             <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
+              <Form.Label>
+                 {/* Full Name <small className="text-muted">(e.g., Tejendra Singh)</small> */}
+              </Form.Label>
               <Form.Control
                 type="text"
+                placeholder="Enter full name"
                 value={currentItem.name}
                 onChange={(e) => setCurrentItem({ ...currentItem, name: e.target.value })}
                 required
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
+              <Form.Label>
+                 {/* Email Address <small className="text-muted">(e.g., tejendra@example.com)</small> */}
+              </Form.Label>
               <Form.Control
                 type="email"
+                placeholder="Enter email address"
                 value={currentItem.email}
                 onChange={(e) => setCurrentItem({ ...currentItem, email: e.target.value })}
                 required
