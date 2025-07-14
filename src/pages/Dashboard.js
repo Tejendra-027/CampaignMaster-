@@ -3,31 +3,33 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 import { FaUser, FaList, FaEnvelope, FaSignOutAlt } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
 
 const Dashboard = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [firstListId, setFirstListId] = useState(null);
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
 
-  // Check for JWT token on mount
+  // 🔐 Ensure token check only runs once on mount
   useEffect(() => {
+    const token = localStorage.getItem('token');
     if (!token) {
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
-  }, [navigate, token]);
+  }, [navigate]);
 
-  // Fetch first list ID for dynamic link
+  // ✅ Fetch first list (only if token exists)
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     const fetchFirstList = async () => {
       try {
         const res = await axios.get('http://localhost:3000/list', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        const lists = res.data?.data || res.data;
+        const lists = res.data?.data?.rows || res.data?.data || res.data || [];
         if (Array.isArray(lists) && lists.length > 0) {
           setFirstListId(lists[0].id);
         }
@@ -37,22 +39,20 @@ const Dashboard = () => {
     };
 
     fetchFirstList();
-  }, [token]);
-
-  // Toggle sidebar collapse
-  const toggleSidebar = useCallback(() => {
-    requestAnimationFrame(() => {
-      setIsOpen(prev => !prev);
-    });
   }, []);
 
-  // Logout handler
+  // Sidebar toggle
+  const toggleSidebar = useCallback(() => {
+    setIsOpen(prev => !prev);
+  }, []);
+
+  // Logout
   const handleLogout = () => {
     localStorage.removeItem('token');
     toast.success('Logged out successfully!');
     setTimeout(() => {
       navigate('/login');
-    }, 1000);
+    }, 800);
   };
 
   return (
@@ -83,16 +83,6 @@ const Dashboard = () => {
               <FaList className="icon" />
               <span className="nav-text">Lists</span>
             </NavLink>
-
-            {firstListId && (
-              <NavLink
-                to={`/dashboard/lists/${firstListId}/items`}
-                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              >
-                <FaEnvelope className="icon" />
-                <span className="nav-text">List Items</span>
-              </NavLink>
-            )}
           </nav>
 
           <button className="nav-link logout-btn" onClick={handleLogout}>

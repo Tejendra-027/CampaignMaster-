@@ -1,54 +1,58 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { Modal, Button, Form } from 'react-bootstrap';
-import { PencilFill, TrashFill, Plus, Search } from 'react-bootstrap-icons';
+import { PencilFill, TrashFill, Plus, Search, Eye } from 'react-bootstrap-icons';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { useNavigate } from 'react-router-dom';
 import './Lists.css';
 
-const MySwal = withReactContent(Swal);
+const MySwal     = withReactContent(Swal);
+const API_BASE   = 'http://localhost:3000';
+const PAGE_LIMIT = 5;
 
 function Lists() {
-  const [lists, setLists] = useState([]);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [lists, setLists]         = useState([]);
+  const [search, setSearch]       = useState('');
+  const [page, setPage]           = useState(1);
+  const [hasMore, setHasMore]     = useState(false);
+  const [loading, setLoading]     = useState(false);
 
   const [showModal, setShowModal] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentList, setCurrentList] = useState({ id: '', name: '' });
+  const [editMode, setEditMode]   = useState(false);
+  const [current, setCurrent]     = useState({ id: '', name: '' });
 
-  const token = localStorage.getItem('token');
+  const navigate = useNavigate();
+  const token    = localStorage.getItem('token');
 
+  /* ------------------------------------------------------------------ */
+  /* Fetch lists                                                        */
+  /* ------------------------------------------------------------------ */
   const fetchLists = useCallback(async () => {
     setLoading(true);
     try {
-      const baseUrl = `http://localhost:3000/list`;
       const params = new URLSearchParams();
-
       if (search) {
         params.append('search', search);
         params.append('all', 'true');
       } else {
         params.append('page', page);
-        params.append('limit', 10);
+        params.append('limit', PAGE_LIMIT);
       }
-
-      const res = await axios.get(`${baseUrl}?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const { data: res } = await axios.get(`${API_BASE}/list?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = Array.isArray(res.data?.data?.rows)
-        ? res.data.data.rows
-        : Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
+      const rows = Array.isArray(res?.data?.rows)
+        ? res.data.rows
+        : Array.isArray(res?.data)
         ? res.data
+        : Array.isArray(res)
+        ? res
         : [];
 
-      setLists(data);
-      setHasMore(!search && data.length === 10);
+      setLists(rows);
+      setHasMore(!search && rows.length === PAGE_LIMIT);
     } catch (err) {
       console.error('❌ Fetch error:', err);
       setLists([]);
@@ -57,55 +61,27 @@ function Lists() {
     }
   }, [page, search, token]);
 
-  useEffect(() => {
-    fetchLists();
-  }, [fetchLists]);
+  useEffect(() => { fetchLists(); }, [fetchLists]);
 
-  const handleSearch = () => {
-    setPage(1);
-    fetchLists();
-  };
+  /* ------------------------------------------------------------------ */
+  /* Modal helpers                                                      */
+  /* ------------------------------------------------------------------ */
+  const openModal  = list => { setCurrent(list || { id: '', name: '' }); setEditMode(!!list); setShowModal(true); };
+  const closeModal = ()   => { setShowModal(false); setCurrent({ id: '', name: '' }); };
 
-  const handleOpenModal = (list = null) => {
-    if (list) {
-      setCurrentList({ id: list.id, name: list.name });
-      setEditMode(true);
-    } else {
-      setCurrentList({ id: '', name: '' });
-      setEditMode(false);
-    }
-    setShowModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setCurrentList({ id: '', name: '' });
-  };
-
-  const handleFormSubmit = async (e) => {
+  /* ------------------------------------------------------------------ */
+  /* Add / Edit                                                         */
+  /* ------------------------------------------------------------------ */
+  const submitForm = async e => {
     e.preventDefault();
     try {
-      const endpoint = editMode
-        ? `http://localhost:3000/list/${currentList.id}`
-        : `http://localhost:3000/list`;
-
+      const url    = editMode ? `${API_BASE}/list/${current.id}` : `${API_BASE}/list`;
       const method = editMode ? axios.put : axios.post;
+      await method(url, { name: current.name }, { headers: { Authorization: `Bearer ${token}` } });
 
-      await method(endpoint, { name: currentList.name }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      MySwal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: editMode ? '✅ List updated!' : '✅ List added!',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true
-      });
-
-      handleCloseModal();
+      MySwal.fire({ toast: true, position: 'top-end', icon: 'success',
+        title: editMode ? '✅ List updated!' : '✅ List added!', showConfirmButton: false, timer: 2000 });
+      closeModal();
       fetchLists();
     } catch (err) {
       console.error('❌ Save failed:', err);
@@ -113,86 +89,102 @@ function Lists() {
     }
   };
 
-  const handleDelete = async (id) => {
-    const confirm = await MySwal.fire({
-      title: 'Are you sure?',
-      text: 'You won’t be able to revert this!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true
+  /* ------------------------------------------------------------------ */
+  /* Delete with “manual cascade”                                       */
+  /* ------------------------------------------------------------------ */
+  const deleteList = async id => {
+    const { isConfirmed } = await MySwal.fire({
+      title: 'Are you sure?', text: 'This deletes the list and its items.',
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete!', reverseButtons: true,
     });
+    if (!isConfirmed) return;
 
-    if (confirm.isConfirmed) {
-      try {
-        await axios.delete(`http://localhost:3000/list/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+    try {
+      /* 1. fetch ALL items for this list */
+      const { data: itemRes } = await axios.get(
+        `${API_BASE}/list/item/filter?listId=${id}&all=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const items = Array.isArray(itemRes?.data) ? itemRes.data
+                  : Array.isArray(itemRes)       ? itemRes
+                  : [];
 
-        fetchLists();
-
-        MySwal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'success',
-          title: '🗑️ List deleted!',
-          showConfirmButton: false,
-          timer: 2000,
-          timerProgressBar: true
-        });
-      } catch (err) {
-        console.error('❌ Delete failed:', err);
-        MySwal.fire('Error', 'Failed to delete list.', 'error');
+      /* 2. delete each item in parallel (if any) */
+      if (items.length) {
+        await Promise.all(
+          items.map(item =>
+            axios.delete(`${API_BASE}/list/item/${item.id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          )
+        );
       }
+
+      /* 3. delete the list itself */
+      await axios.delete(`${API_BASE}/list/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      /* 4. refresh */
+      if (lists.length === 1 && page > 1) setPage(p => p - 1); // step back if last item on page
+      await fetchLists();
+
+      MySwal.fire({ toast: true, position: 'top-end', icon: 'success',
+        title: '🗑️ List deleted!', showConfirmButton: false, timer: 2000 });
+    } catch (err) {
+      console.error('❌ Delete failed:', err);
+      MySwal.fire('Error', 'Failed to delete list.', 'error');
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /* JSX                                                                */
+  /* ------------------------------------------------------------------ */
   return (
     <div className="list-container">
+      {/* header */}
       <div className="list-header">
-        <h2>  List Manager</h2>
-        <button className="add-button" onClick={() => handleOpenModal()}>
+        <h2>List Manager</h2>
+        <button className="add-button" onClick={() => openModal(null)}>
           <Plus /> Add List
         </button>
       </div>
 
+      {/* search */}
       <div className="search-bar">
         <input
-          type="text"
           placeholder="Search by name..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={e => setSearch(e.target.value)}
         />
-        <button onClick={handleSearch}><Search /> Search</button>
+        <button onClick={() => { setPage(1); fetchLists(); }}><Search /> Search</button>
       </div>
 
+      {/* table */}
       {loading ? (
         <p className="loading">Loading...</p>
       ) : (
         <table className="list-table">
           <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th style={{ textAlign: 'center' }}>Actions</th>
-            </tr>
+            <tr><th>ID</th><th>Name</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
           </thead>
           <tbody>
             {lists.length === 0 ? (
-              <tr>
-                <td colSpan="3" className="no-data">No lists found.</td>
-              </tr>
+              <tr><td colSpan="3" className="no-data">No lists found.</td></tr>
             ) : (
-              lists.map((list) => (
+              lists.map(list => (
                 <tr key={list.id}>
                   <td>{list.id}</td>
                   <td>{list.name}</td>
                   <td className="action-buttons">
-                    <button className="icon-button edit" onClick={() => handleOpenModal(list)}>
+                    <button className="icon-button view"
+                            onClick={() => navigate(`/dashboard/lists/${list.id}/items`)}>
+                      <Eye />
+                    </button>
+                    <button className="icon-button edit" onClick={() => openModal(list)}>
                       <PencilFill />
                     </button>
-                    <button className="icon-button delete" onClick={() => handleDelete(list.id)}>
+                    <button className="icon-button delete" onClick={() => deleteList(list.id)}>
                       <TrashFill />
                     </button>
                   </td>
@@ -203,42 +195,41 @@ function Lists() {
         </table>
       )}
 
+      {/* pagination */}
       {!search && (
         <div className="pagination">
-          <button onClick={() => setPage(page - 1)} disabled={page === 1}>⬅ Prev</button>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>⬅ Prev</button>
           <span>Page {page}</span>
-          <button onClick={() => setPage(page + 1)} disabled={!hasMore}>Next ➡</button>
+          <button onClick={() => setPage(p => p + 1)} disabled={!hasMore}>Next ➡</button>
         </div>
       )}
 
-      <Modal show={showModal} onHide={handleCloseModal}>
+      {/* modal */}
+      <Modal show={showModal} onHide={closeModal} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? 'Edit List' : 'Add New List'}</Modal.Title>
         </Modal.Header>
-        <Form onSubmit={handleFormSubmit}>
+        <Form onSubmit={submitForm}>
           <Modal.Body>
             {editMode && (
               <Form.Group className="mb-3">
                 <Form.Label>ID</Form.Label>
-                <Form.Control type="text" value={currentList.id} disabled />
+                <Form.Control value={current.id} disabled />
               </Form.Group>
             )}
             <Form.Group className="mb-3">
               <Form.Label>Enter list name</Form.Label>
               <Form.Control
-                type="text"
-                placeholder="Enter event name"
-                value={currentList.name}
-                onChange={(e) => setCurrentList({ ...currentList, name: e.target.value })}
+                placeholder="Enter list name"
+                value={current.name}
+                onChange={e => setCurrent({ ...current, name: e.target.value })}
                 required
               />
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-            <Button variant="primary" type="submit">
-              {editMode ? 'Update' : 'Create'}
-            </Button>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="primary" type="submit">{editMode ? 'Update' : 'Create'}</Button>
           </Modal.Footer>
         </Form>
       </Modal>

@@ -165,16 +165,6 @@ const Register = () => {
             autoComplete="new-password"
           />
 
-          <label htmlFor="roleId">Select Role</label>
-          <Select
-            inputId="roleId"
-            options={roleOptions}
-            value={roleOptions.find(opt => opt.value === formData.roleId)}
-            onChange={handleRoleChange}
-            classNamePrefix="react-select"
-            isSearchable={false}
-          />
-
           <button type="submit">Register</button>
 
           <p className="form-footer">

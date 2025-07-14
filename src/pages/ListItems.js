@@ -12,6 +12,8 @@ const MySwal = withReactContent(Swal);
 function ListItems() {
   const { id: listId } = useParams();
 
+  const PAGE_LIMIT = 5;
+
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -32,17 +34,16 @@ function ListItems() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ listId });
-
       if (search) {
         params.append('search', search);
         params.append('all', 'true');
       } else {
         params.append('page', page);
-        params.append('limit', 10);
+        params.append('limit', PAGE_LIMIT);
       }
 
       const res = await axios.get(`http://localhost:3000/list/item/filter?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = Array.isArray(res.data?.data?.rows)
@@ -54,7 +55,7 @@ function ListItems() {
         : [];
 
       setItems(data);
-      setHasMore(!search && data.length === 10);
+      setHasMore(!search && data.length === PAGE_LIMIT);
     } catch (err) {
       console.error('❌ Fetch error:', err);
       setItems([]);
@@ -91,7 +92,7 @@ function ListItems() {
       position: 'top-end',
       showConfirmButton: false,
       timer: 3000,
-      timerProgressBar: true
+      timerProgressBar: true,
     });
   };
 
@@ -104,13 +105,17 @@ function ListItems() {
 
       const method = editMode ? axios.put : axios.post;
 
-      await method(endpoint, {
-        name: currentItem.name,
-        email: currentItem.email,
-        listId: Number(listId)
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await method(
+        endpoint,
+        {
+          name: currentItem.name,
+          email: currentItem.email,
+          listId: Number(listId),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       showToast('success', editMode ? '✅ Updated!' : '✅ Added!');
       handleCloseModal();
@@ -127,13 +132,13 @@ function ListItems() {
       text: 'You will not be able to recover this item!',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!'
+      confirmButtonText: 'Yes, delete it!',
     });
 
     if (confirm.isConfirmed) {
       try {
         await axios.delete(`http://localhost:3000/list/item/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         showToast('success', '🗑️ Deleted!');
@@ -150,17 +155,24 @@ function ListItems() {
 
     const formData = new FormData();
     formData.append('file', csvFile);
-    formData.append('listId', listId);
+    formData.append('listId', String(listId)); // Ensure listId is passed
 
     try {
       setUploading(true);
       await axios.post('http://localhost:3000/list/item/upload', formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       setCsvFile(null);
       setCsvModal(false);
       showToast('success', '📤 CSV uploaded!');
+
+      // Refresh list for current listId
+      setPage(1);
+      setSearch('');
       fetchItems();
     } catch (err) {
       console.error('❌ Upload failed:', err);
@@ -173,7 +185,7 @@ function ListItems() {
   return (
     <div className="list-container">
       <div className="list-header">
-        <h2>  List Items</h2>
+        <h2>List Items</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="upload-button" onClick={() => setCsvModal(true)}>
             <Upload /> Upload CSV
@@ -208,7 +220,9 @@ function ListItems() {
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan="4" className="no-data">No items found.</td></tr>
+              <tr>
+                <td colSpan="4" className="no-data">No items found.</td>
+              </tr>
             ) : (
               items.map((item) => (
                 <tr key={item.id}>
@@ -238,7 +252,7 @@ function ListItems() {
         </div>
       )}
 
-      {/* Add/Edit Item Modal */}
+      {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={handleCloseModal} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? 'Edit Item' : 'Add New Item'}</Modal.Title>
@@ -246,9 +260,6 @@ function ListItems() {
         <Form onSubmit={handleFormSubmit}>
           <Modal.Body>
             <Form.Group className="mb-3">
-              <Form.Label>
-                 {/* Full Name <small className="text-muted">(e.g., Tejendra Singh)</small> */}
-              </Form.Label>
               <Form.Control
                 type="text"
                 placeholder="Enter full name"
@@ -258,9 +269,6 @@ function ListItems() {
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>
-                 {/* Email Address <small className="text-muted">(e.g., tejendra@example.com)</small> */}
-              </Form.Label>
               <Form.Control
                 type="email"
                 placeholder="Enter email address"
@@ -277,7 +285,7 @@ function ListItems() {
         </Form>
       </Modal>
 
-      {/* Upload CSV Modal */}
+      {/* CSV Upload Modal */}
       <Modal show={csvModal} onHide={() => setCsvModal(false)} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>📤 Upload CSV File</Modal.Title>
@@ -294,9 +302,7 @@ function ListItems() {
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setCsvModal(false)} disabled={uploading}>
-            Cancel
-          </Button>
+          <Button variant="secondary" onClick={() => setCsvModal(false)} disabled={uploading}>Cancel</Button>
           <Button variant="primary" onClick={handleUploadCSV} disabled={!csvFile || uploading}>
             {uploading ? 'Uploading...' : 'Upload'}
           </Button>

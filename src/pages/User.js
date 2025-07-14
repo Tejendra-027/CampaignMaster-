@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { FaTrashAlt, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 import { ToastContainer, toast } from 'react-toastify';
@@ -7,251 +7,182 @@ import 'react-toastify/dist/ReactToastify.css';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 import './User.css';
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL        = 'http://localhost:3000';
+const ENTRIES_PER_PAGE = 5;
 
 const User = () => {
-  const [users, setUsers] = useState([]);
-  const [editId, setEditId] = useState(null);
+  const [users, setUsers]   = useState([]);
+  const [total, setTotal]   = useState(0);
+  const [page, setPage]     = useState(1);
+  const [search, setSearch] = useState('');
+
+  const [editId,   setEditId]   = useState(null);
   const [editData, setEditData] = useState({});
+  const [loading,  setLoading]  = useState(false);
+
   const token = localStorage.getItem('token');
 
-  useEffect(() => {
-    fetchUsers();
-    // eslint-disable-next-line
-  }, []);
-
-  const fetchUsers = async () => {
+  /* ---------------- fetch users ---------------- */
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/user/list`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setUsers(res.data);
-    } catch (err) {
-      console.error('Failed to fetch users:', err);
-      toast.error('Failed to load users');
-    }
-  };
+      const url = `${BASE_URL}/user/list?page=${page}&limit=${ENTRIES_PER_PAGE}&search=${encodeURIComponent(search)}`;
+      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
 
+      /* unwrap => res.data = { success, data:{ rows, total … } } */
+      const payload = res.data.data || {};
+      const { rows = [], total = 0 } = payload;
+
+      setUsers(rows);
+      setTotal(total);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, token]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const totalPages = Math.max(1, Math.ceil(total / ENTRIES_PER_PAGE));
+
+  /* ---------------- delete user ---------------- */
   const confirmDelete = (id) => {
     confirmAlert({
       title: 'Confirm Delete',
       message: 'Are you sure you want to delete this user?',
-      buttons: [
-        {
-          label: 'Yes',
-          onClick: () => deleteConfirmed(id),
-        },
-        {
-          label: 'No',
-        },
-      ],
+      buttons: [{ label: 'Yes', onClick: () => deleteConfirmed(id) }, { label: 'No' }]
     });
   };
 
   const deleteConfirmed = async (id) => {
     try {
-      await axios.delete(`${BASE_URL}/auth/user/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      await axios.delete(`${BASE_URL}/user/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setUsers(users.filter((u) => u.id !== id));
-      toast.success('User deleted successfully');
+      toast.success('User deleted');
+      fetchUsers();
     } catch (err) {
-      toast.error('Failed to delete user. Only admin can delete users.');
       console.error(err);
+      toast.error(err.response?.data?.message || 'Delete failed');
     }
   };
 
-  const handleEdit = (user) => {
-    setEditId(user.id);
+  /* ---------------- edit helpers ---------------- */
+  const handleEdit = (u) => {
+    setEditId(u.id);
     setEditData({
-      name: user.name,
-      email: user.email,
-      mobileCountryCode: user.mobileCountryCode,
-      mobile: user.mobile,
-      newPassword: '', // ✅ For admin to input new password
+      name: u.name,
+      email: u.email,
+      mobileCountryCode: u.mobileCountryCode,
+      mobile: u.mobile,
+      newPassword: ''
     });
   };
 
-  const handleEditChange = (e) => {
-    setEditData({ ...editData, [e.target.name]: e.target.value });
-  };
+  const handleEditChange = (e) => setEditData({ ...editData, [e.target.name]: e.target.value });
 
-  const handleEditCancel = () => {
-    setEditId(null);
-    setEditData({});
-  };
+  const handleEditCancel = () => { setEditId(null); setEditData({}); };
 
   const handleEditSave = async (id) => {
     try {
-      // Update basic user info
       await axios.put(`${BASE_URL}/user/${id}`, editData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Reset password if newPassword is provided
-      if (editData.newPassword && editData.newPassword.trim() !== '') {
-        await axios.put(`${BASE_URL}/user/reset-password/${id}`, {
-          newPassword: editData.newPassword,
-        }, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      if (editData.newPassword.trim()) {
+        await axios.put(`${BASE_URL}/user/reset-password/${id}`,
+          { newPassword: editData.newPassword },
+          { headers: { Authorization: `Bearer ${token}` } });
       }
 
-      // Update UI
-      setUsers(users.map((u) =>
-        u.id === id ? { ...u, ...editData, password: '••••••••' } : u
-      ));
-      setEditId(null);
-      setEditData({});
-      toast.success('User updated successfully');
+      toast.success('User updated');
+      handleEditCancel();
+      fetchUsers();
     } catch (err) {
-      toast.error('Failed to update user.');
       console.error(err);
+      toast.error('Update failed');
     }
   };
 
+  /* ---------------- render ---------------- */
   return (
     <div className="user-page">
       <ToastContainer />
       <h2 className="user-title">Users List</h2>
-      <div className="user-table-container">
-        <table className="user-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Mobile Code</th>
-              <th>Mobile</th>
-              <th>Password</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="user-empty">No users found.</td>
-              </tr>
-            ) : (
-              users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.id}</td>
-                  <td>
-                    {editId === u.id ? (
-                      <input
-                        name="name"
-                        value={editData.name}
-                        onChange={handleEditChange}
-                        className="user-edit-input"
-                      />
-                    ) : (
-                      u.name
-                    )}
-                  </td>
-                  <td>
-                    {editId === u.id ? (
-                      <input
-                        name="email"
-                        value={editData.email}
-                        onChange={handleEditChange}
-                        className="user-edit-input"
-                      />
-                    ) : (
-                      u.email
-                    )}
-                  </td>
-                  <td>
-                    {editId === u.id ? (
-                      <input
-                        name="mobileCountryCode"
-                        value={editData.mobileCountryCode}
-                        onChange={handleEditChange}
-                        className="user-edit-input"
-                        style={{ width: 50 }}
-                      />
-                    ) : (
-                      u.mobileCountryCode
-                    )}
-                  </td>
-                  <td>
-                    {editId === u.id ? (
-                      <input
-                        name="mobile"
-                        value={editData.mobile}
-                        onChange={handleEditChange}
-                        className="user-edit-input"
-                        style={{ width: 110 }}
-                      />
-                    ) : (
-                      u.mobile
-                    )}
-                  </td>
-                  <td className="user-password">
-                    {editId === u.id ? (
-                      <input
-                        type="password"
-                        name="newPassword"
-                        placeholder="Reset Password"
-                        value={editData.newPassword}
-                        onChange={handleEditChange}
-                        className="user-edit-input"
-                        style={{ width: 180 }}
-                      />
-                    ) : (
-                      '••••••••'
-                    )}
-                  </td>
-                  <td>
-                    {editId === u.id ? (
-                      <>
-                        <button
-                          className="user-edit-btn"
-                          title="Save"
-                          onClick={() => handleEditSave(u.id)}
-                        >
-                          <FaSave />
-                        </button>
-                        <button
-                          className="user-edit-btn"
-                          title="Cancel"
-                          onClick={handleEditCancel}
-                        >
-                          <FaTimes />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          className="user-edit-btn"
-                          title="Edit"
-                          onClick={() => handleEdit(u)}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() => confirmDelete(u.id)}
-                          className="user-delete-btn"
-                          title="Delete"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+
+      {/* Search */}
+      <div className="user-search-bar">
+        <input
+          type="text"
+          placeholder="Search name / email / mobile..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        />
       </div>
+
+      {loading ? (
+        <p>Loading…</p>
+      ) : (
+        <>
+          <div className="user-table-container">
+            <table className="user-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Name</th><th>Email</th>
+                  <th>Code</th><th>Mobile</th><th>Password</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.length === 0 ? (
+                  <tr><td colSpan={7} className="user-empty">No users found.</td></tr>
+                ) : users.map((u) => (
+                  <tr key={u.id}>
+                    <td>{u.id}</td>
+
+                    <td>{editId === u.id
+                      ? <input name="name" value={editData.name} onChange={handleEditChange} className="user-edit-input"/> : u.name}</td>
+
+                    <td>{editId === u.id
+                      ? <input name="email" value={editData.email} onChange={handleEditChange} className="user-edit-input"/> : u.email}</td>
+
+                    <td>{editId === u.id
+                      ? <input name="mobileCountryCode" value={editData.mobileCountryCode} onChange={handleEditChange} style={{width:50}} className="user-edit-input"/> : u.mobileCountryCode}</td>
+
+                    <td>{editId === u.id
+                      ? <input name="mobile" value={editData.mobile} onChange={handleEditChange} style={{width:110}} className="user-edit-input"/> : u.mobile}</td>
+
+                    <td className="user-password">{editId === u.id
+                      ? <input type="password" name="newPassword" placeholder="Reset Password" value={editData.newPassword} onChange={handleEditChange} style={{width:160}} className="user-edit-input"/> : '••••••••'}</td>
+
+                    <td>
+                      {editId === u.id ? (
+                        <>
+                          <button className="user-edit-btn" title="Save"   onClick={() => handleEditSave(u.id)}><FaSave /></button>
+                          <button className="user-edit-btn" title="Cancel" onClick={handleEditCancel}><FaTimes /></button>
+                        </>
+                      ) : (
+                        <>
+                          <button className="user-edit-btn" title="Edit"   onClick={() => handleEdit(u)}><FaEdit /></button>
+                          <button className="user-delete-btn" title="Delete" onClick={() => confirmDelete(u.id)}><FaTrashAlt /></button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="pagination">
+            <button onClick={() => setPage(page - 1)} disabled={page <= 1}>⬅ Prev</button>
+            <span>Page {page} of {totalPages}</span>
+            <button onClick={() => setPage(page + 1)} disabled={page >= totalPages}>Next ➡</button>
+          </div>
+        </>
+      )}
     </div>
   );
 };

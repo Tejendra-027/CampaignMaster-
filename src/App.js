@@ -5,7 +5,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import User from './pages/User';
 import Lists from './pages/Lists';
-import ListItems from './pages/ListItems'; // ✅ Import ListItems
+import ListItems from './pages/ListItems';
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
@@ -28,7 +28,7 @@ function App() {
         >
           <Route path="users" element={<User />} />
           <Route path="lists" element={<Lists />} />
-          <Route path="lists/:id/items" element={<ListItems />} /> {/* ✅ Add this */}
+          <Route path="lists/:id/items" element={<ListItems />} /> {/* ✅ This enables eye button */}
         </Route>
 
         {/* Fallback Route */}
