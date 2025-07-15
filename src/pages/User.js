@@ -1,3 +1,4 @@
+// src/pages/User.js
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { FaTrashAlt, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
@@ -7,14 +8,15 @@ import 'react-toastify/dist/ReactToastify.css';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 import './User.css';
 
-const BASE_URL        = 'http://localhost:3000';
+const BASE_URL         = 'http://localhost:3000';
 const ENTRIES_PER_PAGE = 5;
 
-const User = () => {
+export default function User() {
+  /* ───────────────────── state ───────────────────── */
   const [users, setUsers]   = useState([]);
   const [total, setTotal]   = useState(0);
-  const [page, setPage]     = useState(1);
-  const [search, setSearch] = useState('');
+  const [page,  setPage]    = useState(1);
+  const [search,setSearch]  = useState('');
 
   const [editId,   setEditId]   = useState(null);
   const [editData, setEditData] = useState({});
@@ -22,15 +24,18 @@ const User = () => {
 
   const token = localStorage.getItem('token');
 
-  /* ---------------- fetch users ---------------- */
+  /* ─────────────────── fetch users ────────────────── */
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const url = `${BASE_URL}/user/list?page=${page}&limit=${ENTRIES_PER_PAGE}&search=${encodeURIComponent(search)}`;
-      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+      const { data } = await axios.post(
+        `${BASE_URL}/user/filter`,
+        { page, limit: ENTRIES_PER_PAGE, search },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      /* unwrap => res.data = { success, data:{ rows, total … } } */
-      const payload = res.data.data || {};
+      /* backend shape: { success, data:{ rows, total … } } */
+      const payload           = data.data || {};
       const { rows = [], total = 0 } = payload;
 
       setUsers(rows);
@@ -47,12 +52,15 @@ const User = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / ENTRIES_PER_PAGE));
 
-  /* ---------------- delete user ---------------- */
+  /* ─────────────────── delete helpers ─────────────────── */
   const confirmDelete = (id) => {
     confirmAlert({
       title: 'Confirm Delete',
       message: 'Are you sure you want to delete this user?',
-      buttons: [{ label: 'Yes', onClick: () => deleteConfirmed(id) }, { label: 'No' }]
+      buttons: [
+        { label: 'Yes', onClick: () => deleteConfirmed(id) },
+        { label: 'No' }
+      ]
     });
   };
 
@@ -69,7 +77,7 @@ const User = () => {
     }
   };
 
-  /* ---------------- edit helpers ---------------- */
+  /* ─────────────────── edit helpers ─────────────────── */
   const handleEdit = (u) => {
     setEditId(u.id);
     setEditData({
@@ -81,17 +89,15 @@ const User = () => {
     });
   };
 
-  const handleEditChange = (e) => setEditData({ ...editData, [e.target.name]: e.target.value });
-
-  const handleEditCancel = () => { setEditId(null); setEditData({}); };
+  const handleEditChange  = (e) => setEditData({ ...editData, [e.target.name]: e.target.value });
+  const handleEditCancel  = () => { setEditId(null); setEditData({}); };
 
   const handleEditSave = async (id) => {
     try {
-      await axios.put(`${BASE_URL}/user/${id}`, editData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.put(`${BASE_URL}/user/${id}`, editData,
+        { headers: { Authorization: `Bearer ${token}` } });
 
-      if (editData.newPassword.trim()) {
+      if (editData.newPassword?.trim()) {
         await axios.put(`${BASE_URL}/user/reset-password/${id}`,
           { newPassword: editData.newPassword },
           { headers: { Authorization: `Bearer ${token}` } });
@@ -106,13 +112,13 @@ const User = () => {
     }
   };
 
-  /* ---------------- render ---------------- */
+  /* ─────────────────────── render ────────────────────── */
   return (
     <div className="user-page">
       <ToastContainer />
       <h2 className="user-title">Users List</h2>
 
-      {/* Search */}
+      {/* search */}
       <div className="user-search-bar">
         <input
           type="text"
@@ -175,16 +181,14 @@ const User = () => {
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* pagination */}
           <div className="pagination">
-            <button onClick={() => setPage(page - 1)} disabled={page <= 1}>⬅ Prev</button>
+            <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page <= 1}>⬅ Prev</button>
             <span>Page {page} of {totalPages}</span>
-            <button onClick={() => setPage(page + 1)} disabled={page >= totalPages}>Next ➡</button>
+            <button onClick={() => setPage(p => p+1)} disabled={page >= totalPages}>Next ➡</button>
           </div>
         </>
       )}
     </div>
   );
-};
-
-export default User;
+}
