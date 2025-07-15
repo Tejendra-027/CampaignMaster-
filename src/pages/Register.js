@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
+import { registerUser, selectAuth } from '../features/auth/authSlice';
 import { useNavigate, Link } from 'react-router-dom';
 import Select from 'react-select';
 import Swal from 'sweetalert2';
@@ -19,21 +20,12 @@ const Register = () => {
     mobileCountryCode: countryCodeOptions[0],
     mobile: '',
     password: '',
-    roleId: 2 // default User
+    roleId: 2
   });
 
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setFormData({
-      name: '',
-      email: '',
-      mobileCountryCode: countryCodeOptions[0],
-      mobile: '',
-      password: '',
-      roleId: 2
-    });
-  }, []);
+  const { status, error } = useSelector(selectAuth);
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -63,33 +55,30 @@ const Register = () => {
       });
     }
 
-    try {
-      const payload = {
-        name: formData.name,
-        email: formData.email,
-        mobileCountryCode: formData.mobileCountryCode.value,
-        mobile: formData.mobile,
-        password: formData.password,
-        roleId: 2 // hardcoded user role
-      };
+    const payload = {
+      name: formData.name,
+      email: formData.email,
+      mobileCountryCode: formData.mobileCountryCode.value,
+      mobile: formData.mobile,
+      password: formData.password,
+      roleId: 2
+    };
 
-      await axios.post('http://localhost:3000/auth/register', payload);
+    const result = await dispatch(registerUser(payload));
 
+    if (registerUser.fulfilled.match(result)) {
       Swal.fire({
         icon: 'success',
         title: 'Registration Successful',
         text: 'Your account has been created!',
         confirmButtonText: 'Login Now',
         confirmButtonColor: '#3085d6'
-      }).then(() => {
-        navigate('/login');
-      });
-    } catch (err) {
-      console.error(err);
+      }).then(() => navigate('/login'));
+    } else {
       Swal.fire({
         icon: 'error',
         title: 'Registration Failed',
-        text: err.response?.data?.message || 'Please try again later.',
+        text: result.payload || 'Please try again later.',
         confirmButtonColor: '#d33'
       });
     }
@@ -105,23 +94,8 @@ const Register = () => {
           <h2>Create Account</h2>
           <p className="form-subtext">Please fill in the details to register</p>
 
-          <input
-            name="name"
-            placeholder="Full Name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            autoComplete="off"
-          />
-          <input
-            name="email"
-            placeholder="Email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            autoComplete="off"
-          />
+          <input name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} required />
+          <input name="email" placeholder="Email" type="email" value={formData.email} onChange={handleChange} required />
 
           <div className="mobile-group">
             <Select
@@ -132,27 +106,14 @@ const Register = () => {
               className="mobile-code-select"
               isSearchable={false}
             />
-            <input
-              name="mobile"
-              placeholder="Mobile Number"
-              value={formData.mobile}
-              onChange={handleChange}
-              required
-              autoComplete="off"
-            />
+            <input name="mobile" placeholder="Mobile Number" value={formData.mobile} onChange={handleChange} required />
           </div>
 
-          <input
-            name="password"
-            placeholder="Password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            autoComplete="new-password"
-          />
+          <input name="password" placeholder="Password" type="password" value={formData.password} onChange={handleChange} required />
 
-          <button type="submit">Register</button>
+          <button type="submit" disabled={status === 'loading'}>
+            {status === 'loading' ? 'Registering...' : 'Register'}
+          </button>
 
           <p className="form-footer">
             Already have an account? <Link to="/login">Login</Link>
