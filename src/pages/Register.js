@@ -6,11 +6,6 @@ import Swal from 'sweetalert2';
 import './Register.css';
 import loginVisual from '../assets/Login-pana.png';
 
-const roleOptions = [
-  { value: 2, label: 'User (default)' },
-  { value: 1, label: 'Admin (manage users)' }
-];
-
 const countryCodeOptions = [
   { value: '+91', label: '+91 (India)' },
   { value: '+1', label: '+1 (USA)' },
@@ -24,13 +19,12 @@ const Register = () => {
     mobileCountryCode: countryCodeOptions[0],
     mobile: '',
     password: '',
-    roleId: 2
+    roleId: 2 // default User
   });
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Optional reset on mount
     setFormData({
       name: '',
       email: '',
@@ -55,13 +49,6 @@ const Register = () => {
     }));
   };
 
-  const handleRoleChange = (selected) => {
-    setFormData(prev => ({
-      ...prev,
-      roleId: selected.value
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -83,7 +70,7 @@ const Register = () => {
         mobileCountryCode: formData.mobileCountryCode.value,
         mobile: formData.mobile,
         password: formData.password,
-        roleId: formData.roleId
+        roleId: 2 // hardcoded user role
       };
 
       await axios.post('http://localhost:3000/auth/register', payload);

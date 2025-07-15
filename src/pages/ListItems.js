@@ -33,29 +33,22 @@ function ListItems() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ listId });
-      if (search) {
-        params.append('search', search);
-        params.append('all', 'true');
-      } else {
-        params.append('page', page);
-        params.append('limit', PAGE_LIMIT);
-      }
+      const body = {
+        listId,
+        search,
+        page,
+        limit: PAGE_LIMIT
+      };
 
-      const res = await axios.get(`http://localhost:3000/list/item/filter?${params.toString()}`, {
+      const res = await axios.post(`http://localhost:3000/list/item/filter`, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = Array.isArray(res.data?.data?.rows)
-        ? res.data.data.rows
-        : Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-        ? res.data
-        : [];
+      const rows = res.data?.rows || [];
+      const total = res.data?.total || 0;
 
-      setItems(data);
-      setHasMore(!search && data.length === PAGE_LIMIT);
+      setItems(rows);
+      setHasMore(!search && rows.length === PAGE_LIMIT);
     } catch (err) {
       console.error('❌ Fetch error:', err);
       setItems([]);
@@ -155,7 +148,7 @@ function ListItems() {
 
     const formData = new FormData();
     formData.append('file', csvFile);
-    formData.append('listId', String(listId)); // Ensure listId is passed
+    formData.append('listId', String(listId));
 
     try {
       setUploading(true);
@@ -169,8 +162,6 @@ function ListItems() {
       setCsvFile(null);
       setCsvModal(false);
       showToast('success', '📤 CSV uploaded!');
-
-      // Refresh list for current listId
       setPage(1);
       setSearch('');
       fetchItems();
@@ -252,7 +243,6 @@ function ListItems() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={handleCloseModal} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? 'Edit Item' : 'Add New Item'}</Modal.Title>
@@ -285,7 +275,6 @@ function ListItems() {
         </Form>
       </Modal>
 
-      {/* CSV Upload Modal */}
       <Modal show={csvModal} onHide={() => setCsvModal(false)} backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>📤 Upload CSV File</Modal.Title>
