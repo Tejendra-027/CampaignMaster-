@@ -1,33 +1,49 @@
 // src/pages/Dashboard.js
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import './Dashboard.css';
+import { useSelector, useDispatch } from 'react-redux';
 import { FaUser, FaList, FaSignOutAlt } from 'react-icons/fa';
-import { toast } from 'react-toastify';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
-/* ──────────────────────────────────────────────────────────── */
+import { logout as logoutAction } from '../features/auth/authSlice';
+import './Dashboard.css';
 
-const API_BASE = 'http://localhost:3000';      // ← one place to change later
-const FIRST_PAGE_LIMIT = 1;                    // just need 1 row
+/* ------------------------------------------------------------------ */
+/* Config                                                              */
+/* ------------------------------------------------------------------ */
+const API_BASE         = 'http://localhost:3000';
+const FIRST_PAGE_LIMIT = 1;           // we only need a single row to test
 
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
 export default function Dashboard() {
-  /* ---------- local state ---------- */
-  const [isOpen,       setIsOpen]       = useState(true);   // sidebar
-  const [firstListId,  setFirstListId]  = useState(null);   // could be useful later
+  /* -------------- global auth state (Redux) -------------- */
+  const { token: reduxToken, user } = useSelector((state) => state.auth);
+  const dispatch  = useDispatch();
+
+  /* -------------- local state -------------- */
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [firstListId, setFirstListId] = useState(null);   // passed to children
 
   const navigate = useNavigate();
-  const token    = localStorage.getItem('token');
-  const axiosCfg = { headers: { Authorization: `Bearer ${token}` } };
+  const token    = reduxToken || localStorage.getItem('token'); // graceful fallback
 
-  /* ---------- auth guard (once) ---------- */
+  /* -------------- axios config (memoised) -------------- */
+  const axiosCfg = useMemo(
+    () => ({ headers: { Authorization: `Bearer ${token}` } }),
+    [token]
+  );
+
+  /* -------------- auth guard -------------- */
   useEffect(() => {
     if (!token) navigate('/login', { replace: true });
   }, [token, navigate]);
 
-  /* ---------- fetch first list (once) ---------- */
+  /* -------------- fetch first list once -------------- */
   useEffect(() => {
-    if (!token) return;                // extra safety
+    if (!token) return;
 
     (async () => {
       try {
@@ -40,27 +56,31 @@ export default function Dashboard() {
         const rows = Array.isArray(data?.rows) ? data.rows : [];
         if (rows.length) setFirstListId(rows[0].id);
       } catch (err) {
-        console.error('[Dashboard] failed to fetch first list:', err);
-        /* non‑fatal — just log */
+        console.error('[Dashboard] Could not fetch first list:', err);
+        // non‑fatal
       }
     })();
   }, [token, axiosCfg]);
 
-  /* ---------- sidebar toggle ---------- */
-  const toggleSidebar = useCallback(() => setIsOpen(s => !s), []);
+  /* -------------- sidebar toggle -------------- */
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => !prev);
+  }, []);
 
-  /* ---------- logout ---------- */
+  /* -------------- logout -------------- */
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    dispatch(logoutAction());                // clears Redux + localStorage
     toast.success('Logged out successfully!');
-    setTimeout(() => navigate('/login'), 800);
+    setTimeout(() => navigate('/login', { replace: true }), 800);
   };
 
-  /* ---------- render ---------- */
+  /* ------------------------------------------------------------------ */
+  /* JSX                                                                 */
+  /* ------------------------------------------------------------------ */
   return (
     <div className="dashboard-container">
-      {/* ─── Sidebar ─────────────────────────────────────── */}
-      <aside className={`sidebar ${isOpen ? '' : 'collapsed'}`}>
+      {/* ── Sidebar ─────────────────────────────────────────── */}
+      <aside className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
         <button
           className="toggle-btn"
           onClick={toggleSidebar}
@@ -96,10 +116,10 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* ─── Main outlet ────────────────────────────────── */}
-      <main className={`dashboard-main ${isOpen ? '' : 'full'}`}>
-        {/* `firstListId` is available for child routes if needed */}
-        <Outlet context={{ firstListId }} />
+      {/* ── Main area ──────────────────────────────────────── */}
+      <main className={`dashboard-main ${sidebarOpen ? '' : 'full'}`}>
+        {/* Child routes can access firstListId & user via useOutletContext() */}
+        <Outlet context={{ firstListId, user }} />
       </main>
     </div>
   );
