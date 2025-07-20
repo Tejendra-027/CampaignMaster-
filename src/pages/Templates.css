@@ -1,0 +1,102 @@
+/* Container */
+.container {
+  max-width: 1000px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* Heading */
+h3 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Table Styling */
+.table {
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+  color: #555;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+/* Form Controls */
+.form-control {
+  max-width: 300px;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+/* Button Styles */
+button.btn-warning {
+  background-color: #f0ad4e;
+  border-color: #f0ad4e;
+  color: #fff;
+}
+
+button.btn-warning:hover {
+  background-color: #ec971f;
+}
+
+button.btn-danger {
+  background-color: #d9534f;
+  border-color: #d43f3a;
+  color: #fff;
+}
+
+button.btn-danger:hover {
+  background-color: #c9302c;
+}
+
+button.btn-primary {
+  background-color: #0275d8;
+  border-color: #0275d8;
+  color: #fff;
+}
+
+button.btn-primary:hover {
+  background-color: #025aa5;
+}
+
+/* Spinner Centering */
+.spinner-border {
+  margin: 20px auto;
+  display: block;
+}
+
+/* Modal Styling */
+.modal-content {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.modal-title {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Email Editor Styling */
+.email-editor-wrapper {
+  height: 500px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 15px;
+}

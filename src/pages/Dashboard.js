@@ -2,46 +2,35 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { FaUser, FaList, FaSignOutAlt } from 'react-icons/fa';
+import { FaUser, FaList, FaEnvelope, FaSignOutAlt } from 'react-icons/fa'; // ← Added FaEnvelope
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
 import { logout as logoutAction } from '../features/auth/authSlice';
 import './Dashboard.css';
 
-/* ------------------------------------------------------------------ */
-/* Config                                                              */
-/* ------------------------------------------------------------------ */
-const API_BASE         = 'http://localhost:3000';
-const FIRST_PAGE_LIMIT = 1;           // we only need a single row to test
+const API_BASE = 'http://localhost:3000';
+const FIRST_PAGE_LIMIT = 1;
 
-/* ------------------------------------------------------------------ */
-/* Component                                                           */
-/* ------------------------------------------------------------------ */
 export default function Dashboard() {
-  /* -------------- global auth state (Redux) -------------- */
   const { token: reduxToken, user } = useSelector((state) => state.auth);
-  const dispatch  = useDispatch();
+  const dispatch = useDispatch();
 
-  /* -------------- local state -------------- */
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [firstListId, setFirstListId] = useState(null);   // passed to children
+  const [firstListId, setFirstListId] = useState(null);
 
   const navigate = useNavigate();
-  const token    = reduxToken || localStorage.getItem('token'); // graceful fallback
+  const token = reduxToken || localStorage.getItem('token');
 
-  /* -------------- axios config (memoised) -------------- */
   const axiosCfg = useMemo(
     () => ({ headers: { Authorization: `Bearer ${token}` } }),
     [token]
   );
 
-  /* -------------- auth guard -------------- */
   useEffect(() => {
     if (!token) navigate('/login', { replace: true });
   }, [token, navigate]);
 
-  /* -------------- fetch first list once -------------- */
   useEffect(() => {
     if (!token) return;
 
@@ -57,26 +46,20 @@ export default function Dashboard() {
         if (rows.length) setFirstListId(rows[0].id);
       } catch (err) {
         console.error('[Dashboard] Could not fetch first list:', err);
-        // non‑fatal
       }
     })();
   }, [token, axiosCfg]);
 
-  /* -------------- sidebar toggle -------------- */
   const toggleSidebar = useCallback(() => {
     setSidebarOpen((prev) => !prev);
   }, []);
 
-  /* -------------- logout -------------- */
   const handleLogout = () => {
-    dispatch(logoutAction());                // clears Redux + localStorage
+    dispatch(logoutAction());
     toast.success('Logged out successfully!');
     setTimeout(() => navigate('/login', { replace: true }), 800);
   };
 
-  /* ------------------------------------------------------------------ */
-  /* JSX                                                                 */
-  /* ------------------------------------------------------------------ */
   return (
     <div className="dashboard-container">
       {/* ── Sidebar ─────────────────────────────────────────── */}
@@ -107,6 +90,14 @@ export default function Dashboard() {
               <FaList className="icon" />
               <span className="nav-text">Lists</span>
             </NavLink>
+
+            <NavLink
+              to="/dashboard/templates" // ✅ New Templates NavLink
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <FaEnvelope className="icon" />
+              <span className="nav-text">Templates</span>
+            </NavLink>
           </nav>
 
           <button className="nav-link logout-btn" onClick={handleLogout}>
@@ -118,7 +109,6 @@ export default function Dashboard() {
 
       {/* ── Main area ──────────────────────────────────────── */}
       <main className={`dashboard-main ${sidebarOpen ? '' : 'full'}`}>
-        {/* Child routes can access firstListId & user via useOutletContext() */}
         <Outlet context={{ firstListId, user }} />
       </main>
     </div>
