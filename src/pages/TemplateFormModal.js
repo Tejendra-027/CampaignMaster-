@@ -38,51 +38,65 @@ const TemplateFormModal = ({ show, onHide, template }) => {
       try {
         if (template?.id) {
           await dispatch(updateTemplate({ id: template.id, data: payload })).unwrap();
-          Swal.fire('Updated!', '', 'success');
+          Swal.fire('Template Updated!', '', 'success');
         } else {
           await dispatch(createTemplate(payload)).unwrap();
-          Swal.fire('Created!', '', 'success');
+          Swal.fire('Template Created!', '', 'success');
         }
 
         dispatch(fetchTemplates());
         onHide();
       } catch (err) {
-        Swal.fire('Error', err, 'error');
+        Swal.fire('Error', err?.message || 'Something went wrong', 'error');
       }
     });
   };
 
   return (
-    <Modal show={show} onHide={onHide} size="xl" centered backdrop="static">
-      <Modal.Header closeButton>
-        <Modal.Title>{template ? 'Edit Template' : 'New Template'}</Modal.Title>
+    <Modal show={show} onHide={onHide} size="xl" centered backdrop="static" className="template-modal">
+      <Modal.Header closeButton className="border-bottom">
+        <Modal.Title className="fw-semibold">
+          {template ? 'Edit Template' : 'New Template'}
+        </Modal.Title>
       </Modal.Header>
-      <Modal.Body>
-        <Form.Group className="mb-2">
-          <Form.Label>Template Name</Form.Label>
-          <Form.Control
-            ref={nameRef}
-            defaultValue={template?.name || ''}
-            placeholder="Enter template name"
-          />
-        </Form.Group>
 
-        <Form.Group className="mb-3">
-          <Form.Label>Description</Form.Label>
-          <Form.Control
-            as="textarea"
-            rows={2}
-            ref={descRef}
-            defaultValue={template?.description || ''}
-            placeholder="Enter template description"
-          />
-        </Form.Group>
+      <Modal.Body className="pt-3">
+        <Form>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-semibold">Template Name</Form.Label>
+            <Form.Control
+              ref={nameRef}
+              defaultValue={template?.name || ''}
+              placeholder="Enter template name"
+              className="shadow-sm"
+            />
+          </Form.Group>
 
-        <EmailEditor ref={editorRef} minHeight="500px" />
+          <Form.Group className="mb-4">
+            <Form.Label className="fw-semibold">Description</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={2}
+              ref={descRef}
+              defaultValue={template?.description || ''}
+              placeholder="Enter template description"
+              className="shadow-sm"
+            />
+          </Form.Group>
+
+          <div className="border rounded overflow-hidden shadow-sm">
+            <EmailEditor ref={editorRef} minHeight="500px" />
+          </div>
+        </Form>
       </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>Cancel</Button>
-        <Button onClick={handleSave}>Save</Button>
+
+      <Modal.Footer className="d-flex justify-content-between px-4">
+        <Button variant="outline-secondary" onClick={onHide}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={handleSave}>
+          {template ? 'Update Template' : 'Create Template'}
+        </Button>
       </Modal.Footer>
     </Modal>
   );
