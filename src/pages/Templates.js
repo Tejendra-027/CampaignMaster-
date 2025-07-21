@@ -1,3 +1,4 @@
+// src/pages/Templates.js
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -5,15 +6,21 @@ import {
   deleteTemplate,
   selectTemplates
 } from '../features/auth/templateSlice';
-import { Button, Modal, Table } from 'react-bootstrap';
+import { Modal, Button, Form } from 'react-bootstrap';
+import { PencilFill, TrashFill, Plus, Search } from 'react-bootstrap-icons';
 import Swal from 'sweetalert2';
 import TemplateFormModal from './TemplateFormModal';
+import withReactContent from 'sweetalert2-react-content';
+import './Templates.css';
+
+const MySwal = withReactContent(Swal);
 
 const Templates = () => {
   const dispatch = useDispatch();
   const templates = useSelector(selectTemplates);
   const [showModal, setShowModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     dispatch(fetchTemplates());
@@ -25,8 +32,8 @@ const Templates = () => {
   };
 
   const handleDelete = async (id) => {
-    const confirm = await Swal.fire({
-      title: 'Delete template?',
+    const confirm = await MySwal.fire({
+      title: 'Delete this template?',
       text: 'This action cannot be undone!',
       icon: 'warning',
       showCancelButton: true,
@@ -35,50 +42,79 @@ const Templates = () => {
 
     if (confirm.isConfirmed) {
       dispatch(deleteTemplate(id));
-      Swal.fire('Deleted!', '', 'success');
+      MySwal.fire({ toast: true, icon: 'success', title: 'Deleted!', timer: 1800, position: 'top-end', showConfirmButton: false });
     }
   };
 
+  const filteredTemplates = templates?.filter((t) =>
+    t.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="container mt-4">
-      <div className="d-flex justify-content-between mb-3">
-        <h3>Email Templates</h3>
-        <Button onClick={() => { setSelectedTemplate(null); setShowModal(true); }}>
-          + Add Template
-        </Button>
+    <div className="list-container">
+      {/* header */}
+      <div className="list-header">
+        <h2>Template Manager</h2>
+        <button className="add-button" onClick={() => {
+          setSelectedTemplate(null);
+          setShowModal(true);
+        }}>
+          <Plus /> Add Template
+        </button>
       </div>
 
-      <Table bordered hover>
+      {/* search */}
+      <div className="search-bar">
+        <input
+          value={searchTerm}
+          placeholder="Search by title…"
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <button onClick={() => {}}>
+          <Search /> Search
+        </button>
+      </div>
+
+      {/* table */}
+      <table className="list-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Description</th>
+            <th>S.No</th>
+            <th>Title</th>
+            <th>Status</th>
             <th>Created At</th>
-            <th>Action</th>
+            <th style={{ textAlign: 'center' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {templates?.length ? templates.map((t, idx) => (
-            <tr key={t.id}>
-              <td>{idx + 1}</td>
-              <td>{t.name}</td>
-              <td>{t.description}</td>
-              <td>{new Date(t.createdAt).toLocaleString()}</td>
-              <td>
-                <Button variant="warning" size="sm" onClick={() => handleEdit(t)}>Edit</Button>{' '}
-                <Button variant="danger" size="sm" onClick={() => handleDelete(t.id)}>Delete</Button>
-              </td>
-            </tr>
-          )) : (
+          {filteredTemplates?.length ? (
+            filteredTemplates.map((template, idx) => (
+              <tr key={template.id}>
+                <td>{idx + 1}</td>
+                <td>{template.name}</td>
+                <td>{template.status || '—'}</td>
+                <td>{new Date(template.createdAt).toLocaleString()}</td>
+                <td className="action-buttons">
+                  <button className="icon-button edit"
+                          onClick={() => handleEdit(template)}>
+                    <PencilFill />
+                  </button>
+                  <button className="icon-button delete"
+                          onClick={() => handleDelete(template.id)}>
+                    <TrashFill />
+                  </button>
+                </td>
+              </tr>
+            ))
+          ) : (
             <tr>
-              <td colSpan="5" className="text-center">No templates found</td>
+              <td colSpan="5" className="no-data">No templates found.</td>
             </tr>
           )}
         </tbody>
-      </Table>
+      </table>
 
-      {/* Modal for Add/Edit */}
+      {/* modal */}
       <TemplateFormModal
         show={showModal}
         onHide={() => setShowModal(false)}
