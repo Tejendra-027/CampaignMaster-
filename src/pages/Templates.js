@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchTemplates,
   deleteTemplate,
+  toggleTemplateStatus,
   setSearch,
   setPage,
   selectTemplates,
@@ -13,7 +14,7 @@ import {
   selectTemplateLoading,
 } from '../features/auth/templateSlice';
 
-import { PencilFill, TrashFill, Plus, Search } from 'react-bootstrap-icons';
+import { PencilFill, TrashFill, Plus } from 'react-bootstrap-icons';
 import Swal from 'sweetalert2';
 import TemplateFormModal from './TemplateFormModal';
 import withReactContent from 'sweetalert2-react-content';
@@ -40,6 +41,15 @@ const Templates = () => {
   useEffect(() => {
     dispatch(fetchTemplates({ page: currentPage, limit, search: searchTerm }));
   }, [dispatch, currentPage, limit, searchTerm]);
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      dispatch(setSearch(localSearch));
+      dispatch(setPage(1));
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [localSearch, dispatch]);
 
   const handleEdit = (template) => {
     setSelectedTemplate(template);
@@ -68,9 +78,29 @@ const Templates = () => {
     }
   };
 
-  const handleSearchSubmit = () => {
-    dispatch(setSearch(localSearch));
-    dispatch(setPage(1));
+  const handleToggleStatus = async (template) => {
+    const newStatus = !template.isActive; // ✅ boolean instead of 0/1
+
+    dispatch(toggleTemplateStatus({ id: template.id, isActive: newStatus }))
+      .unwrap()
+      .then(() => {
+        MySwal.fire({
+          toast: true,
+          icon: 'success',
+          title: `Template ${newStatus ? 'enabled' : 'disabled'}`,
+          timer: 1500,
+          position: 'top-end',
+          showConfirmButton: false,
+        });
+      })
+      .catch((error) => {
+        console.error('Toggle Status Error:', error);
+        MySwal.fire({
+          icon: 'error',
+          title: 'Failed to update status',
+          text: error?.message || 'Something went wrong',
+        });
+      });
   };
 
   const handlePageChange = (newPage) => {
@@ -102,9 +132,6 @@ const Templates = () => {
           placeholder="Search by title…"
           onChange={(e) => setLocalSearch(e.target.value)}
         />
-        <button onClick={handleSearchSubmit}>
-          <Search /> Search
-        </button>
       </div>
 
       {/* Table */}
@@ -128,18 +155,28 @@ const Templates = () => {
               <tr key={template.id}>
                 <td>{(currentPage - 1) * limit + idx + 1}</td>
                 <td>{template.name}</td>
-                <td>{template.status || '—'}</td>
+                <td>
+                  <button
+                    className={`status-toggle ${template.isActive ? 'active' : 'inactive'}`}
+                    onClick={() => handleToggleStatus(template)}
+                    title="Toggle template status"
+                  >
+                    {template.isActive ? 'Enabled' : 'Disabled'}
+                  </button>
+                </td>
                 <td>{new Date(template.createdAt).toLocaleString()}</td>
                 <td className="action-buttons">
                   <button
                     className="icon-button edit"
                     onClick={() => handleEdit(template)}
+                    title="Edit Template"
                   >
                     <PencilFill />
                   </button>
                   <button
                     className="icon-button delete"
                     onClick={() => handleDelete(template.id)}
+                    title="Delete Template"
                   >
                     <TrashFill />
                   </button>
@@ -154,7 +191,7 @@ const Templates = () => {
         </tbody>
       </table>
 
-      {/* Pagination (only show if more than one page) */}
+      {/* Pagination */}
       {totalTemplates > limit && (
         <div className="pagination-controls">
           <button

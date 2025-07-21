@@ -14,7 +14,7 @@ export const fetchTemplates = createAsyncThunk(
         { page, limit, search },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      return response.data; // contains: data, total, page, limit
+      return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);
     }
@@ -69,6 +69,24 @@ export const deleteTemplate = createAsyncThunk(
   }
 );
 
+// 🔄 TOGGLE TEMPLATE STATUS
+export const toggleTemplateStatus = createAsyncThunk(
+  'template/toggleTemplateStatus',
+  async ({ id, isActive }, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().auth.token || localStorage.getItem('token');
+      const res = await axios.put(
+        `${API_BASE}/templates/${id}/status`,
+        { isActive },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
 // ✅ TEMPLATE SLICE
 const templateSlice = createSlice({
   name: 'template',
@@ -115,7 +133,7 @@ const templateSlice = createSlice({
       })
       .addCase(createTemplate.fulfilled, (state, action) => {
         state.loading = false;
-        state.templates.unshift(action.payload); // insert at top
+        state.templates.unshift(action.payload);
         state.total += 1;
       })
       .addCase(createTemplate.rejected, (state, action) => {
@@ -153,6 +171,23 @@ const templateSlice = createSlice({
       .addCase(deleteTemplate.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Failed to delete template';
+      })
+
+      // ✅ Toggle Status
+      .addCase(toggleTemplateStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(toggleTemplateStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.templates.findIndex(t => t.id === action.payload.id);
+        if (index !== -1) {
+          state.templates[index].isActive = action.payload.isActive;
+        }
+      })
+      .addCase(toggleTemplateStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to toggle status';
       });
   }
 });
