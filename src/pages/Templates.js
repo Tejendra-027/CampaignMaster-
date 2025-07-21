@@ -1,12 +1,18 @@
-// src/pages/Templates.js
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchTemplates,
   deleteTemplate,
-  selectTemplates
+  setSearch,
+  setPage,
+  selectTemplates,
+  selectTotalTemplates,
+  selectPage,
+  selectLimit,
+  selectSearch,
+  selectTemplateLoading,
 } from '../features/auth/templateSlice';
-import { Modal, Button, Form } from 'react-bootstrap';
+
 import { PencilFill, TrashFill, Plus, Search } from 'react-bootstrap-icons';
 import Swal from 'sweetalert2';
 import TemplateFormModal from './TemplateFormModal';
@@ -17,14 +23,23 @@ const MySwal = withReactContent(Swal);
 
 const Templates = () => {
   const dispatch = useDispatch();
+
   const templates = useSelector(selectTemplates);
+  const totalTemplates = useSelector(selectTotalTemplates);
+  const currentPage = useSelector(selectPage);
+  const limit = useSelector(selectLimit);
+  const searchTerm = useSelector(selectSearch);
+  const loading = useSelector(selectTemplateLoading);
+
   const [showModal, setShowModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [localSearch, setLocalSearch] = useState(searchTerm || '');
+
+  const totalPages = Math.ceil(totalTemplates / limit);
 
   useEffect(() => {
-    dispatch(fetchTemplates());
-  }, [dispatch]);
+    dispatch(fetchTemplates({ page: currentPage, limit, search: searchTerm }));
+  }, [dispatch, currentPage, limit, searchTerm]);
 
   const handleEdit = (template) => {
     setSelectedTemplate(template);
@@ -37,45 +52,62 @@ const Templates = () => {
       text: 'This action cannot be undone!',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!'
+      confirmButtonText: 'Yes, delete it!',
     });
 
     if (confirm.isConfirmed) {
       dispatch(deleteTemplate(id));
-      MySwal.fire({ toast: true, icon: 'success', title: 'Deleted!', timer: 1800, position: 'top-end', showConfirmButton: false });
+      MySwal.fire({
+        toast: true,
+        icon: 'success',
+        title: 'Deleted!',
+        timer: 1800,
+        position: 'top-end',
+        showConfirmButton: false,
+      });
     }
   };
 
-  const filteredTemplates = templates?.filter((t) =>
-    t.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSearchSubmit = () => {
+    dispatch(setSearch(localSearch));
+    dispatch(setPage(1));
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      dispatch(setPage(newPage));
+    }
+  };
 
   return (
     <div className="list-container">
-      {/* header */}
+      {/* Header */}
       <div className="list-header">
         <h2>Template Manager</h2>
-        <button className="add-button" onClick={() => {
-          setSelectedTemplate(null);
-          setShowModal(true);
-        }}>
-          <Plus /> Add Template
+        <button
+          className="add-button"
+          onClick={() => {
+            setSelectedTemplate(null);
+            setShowModal(true);
+          }}
+        >
+          <Plus /> Add Template
         </button>
       </div>
 
-      {/* search */}
+      {/* Search Bar */}
       <div className="search-bar">
         <input
-          value={searchTerm}
+          value={localSearch}
           placeholder="Search by title…"
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => setLocalSearch(e.target.value)}
         />
-        <button onClick={() => {}}>
-          <Search /> Search
+        <button onClick={handleSearchSubmit}>
+          <Search /> Search
         </button>
       </div>
 
-      {/* table */}
+      {/* Table */}
       <table className="list-table">
         <thead>
           <tr>
@@ -87,20 +119,28 @@ const Templates = () => {
           </tr>
         </thead>
         <tbody>
-          {filteredTemplates?.length ? (
-            filteredTemplates.map((template, idx) => (
+          {loading ? (
+            <tr>
+              <td colSpan="5" className="no-data">Loading...</td>
+            </tr>
+          ) : templates?.length ? (
+            templates.map((template, idx) => (
               <tr key={template.id}>
-                <td>{idx + 1}</td>
+                <td>{(currentPage - 1) * limit + idx + 1}</td>
                 <td>{template.name}</td>
                 <td>{template.status || '—'}</td>
                 <td>{new Date(template.createdAt).toLocaleString()}</td>
                 <td className="action-buttons">
-                  <button className="icon-button edit"
-                          onClick={() => handleEdit(template)}>
+                  <button
+                    className="icon-button edit"
+                    onClick={() => handleEdit(template)}
+                  >
                     <PencilFill />
                   </button>
-                  <button className="icon-button delete"
-                          onClick={() => handleDelete(template.id)}>
+                  <button
+                    className="icon-button delete"
+                    onClick={() => handleDelete(template.id)}
+                  >
                     <TrashFill />
                   </button>
                 </td>
@@ -114,7 +154,30 @@ const Templates = () => {
         </tbody>
       </table>
 
-      {/* modal */}
+      {/* Pagination (only show if more than one page) */}
+      {totalTemplates > limit && (
+        <div className="pagination-controls">
+          <button
+            className="pagination-button"
+            disabled={currentPage <= 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+          >
+            &laquo; Prev
+          </button>
+          <span className="pagination-info">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="pagination-button"
+            disabled={currentPage >= totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+          >
+            Next &raquo;
+          </button>
+        </div>
+      )}
+
+      {/* Modal */}
       <TemplateFormModal
         show={showModal}
         onHide={() => setShowModal(false)}

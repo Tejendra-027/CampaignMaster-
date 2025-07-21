@@ -3,24 +3,18 @@ import axios from 'axios';
 
 const API_BASE = 'http://localhost:3000';
 
-// 🔁 FETCH TEMPLATES
+// 🔁 FETCH TEMPLATES WITH PAGINATION
 export const fetchTemplates = createAsyncThunk(
   'template/fetchTemplates',
-  async (_, { getState, rejectWithValue }) => {
+  async ({ page = 1, limit = 10, search = '' } = {}, { getState, rejectWithValue }) => {
     try {
       const token = getState().auth.token || localStorage.getItem('token');
       const response = await axios.post(
         `${API_BASE}/templates/filter`,
-        {
-          page: 1,
-          limit: 100,
-          search: ''
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        { page, limit, search },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      return response.data.data; // return the array of templates directly
+      return response.data; // contains: data, total, page, limit
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);
     }
@@ -80,13 +74,23 @@ const templateSlice = createSlice({
   name: 'template',
   initialState: {
     templates: [],
+    total: 0,
+    page: 1,
+    limit: 10,
+    search: '',
     loading: false,
     error: null
   },
-  reducers: {},
+  reducers: {
+    setPage(state, action) {
+      state.page = action.payload;
+    },
+    setSearch(state, action) {
+      state.search = action.payload;
+    }
+  },
   extraReducers: (builder) => {
     builder
-
       // 🔄 Fetch
       .addCase(fetchTemplates.pending, (state) => {
         state.loading = true;
@@ -94,7 +98,10 @@ const templateSlice = createSlice({
       })
       .addCase(fetchTemplates.fulfilled, (state, action) => {
         state.loading = false;
-        state.templates = action.payload || [];
+        state.templates = action.payload.data || [];
+        state.total = action.payload.total;
+        state.page = action.payload.page;
+        state.limit = action.payload.limit;
       })
       .addCase(fetchTemplates.rejected, (state, action) => {
         state.loading = false;
@@ -108,7 +115,8 @@ const templateSlice = createSlice({
       })
       .addCase(createTemplate.fulfilled, (state, action) => {
         state.loading = false;
-        state.templates.push(action.payload);
+        state.templates.unshift(action.payload); // insert at top
+        state.total += 1;
       })
       .addCase(createTemplate.rejected, (state, action) => {
         state.loading = false;
@@ -140,6 +148,7 @@ const templateSlice = createSlice({
       .addCase(deleteTemplate.fulfilled, (state, action) => {
         state.loading = false;
         state.templates = state.templates.filter(t => t.id !== action.payload);
+        state.total -= 1;
       })
       .addCase(deleteTemplate.rejected, (state, action) => {
         state.loading = false;
@@ -148,7 +157,14 @@ const templateSlice = createSlice({
   }
 });
 
+export const { setPage, setSearch } = templateSlice.actions;
 export default templateSlice.reducer;
 
-// 🔍 SELECTOR
+// 🔍 SELECTORS
 export const selectTemplates = (state) => state.template.templates;
+export const selectTotalTemplates = (state) => state.template.total;
+export const selectPage = (state) => state.template.page;
+export const selectLimit = (state) => state.template.limit;
+export const selectSearch = (state) => state.template.search;
+export const selectTemplateLoading = (state) => state.template.loading;
+export const selectTemplateError = (state) => state.template.error;
