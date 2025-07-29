@@ -1,3 +1,5 @@
+// ✅ Paste this entire component in place of your existing CampaignFormModal.js
+
 import React, { useEffect, useState } from 'react';
 import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
 import Swal from 'sweetalert2';
@@ -6,7 +8,6 @@ import axios from 'axios';
 const LIST_API = 'http://localhost:3000/api/list/filter';
 const TEMPLATE_API = 'http://localhost:3000/api/templates/filter';
 const API_BASE_URL = 'http://localhost:3000/api/campaign';
-
 
 const defaultForm = {
   name: '',
@@ -94,6 +95,53 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
     }
   };
 
+  const formatPhoneNumber = (value) => {
+    let cleaned = value.replace(/[^0-9+]/g, '');
+    if (!cleaned.startsWith('+')) {
+      cleaned = '+91' + cleaned;
+    }
+    return cleaned;
+  };
+
+  const renderSenderField = () => {
+    const { channel, emailFrom } = form;
+    if (channel === 'Email') {
+      return (
+        <Form.Group className="mb-3">
+          <Form.Label>Sender Email</Form.Label>
+          <Form.Control
+            type="email"
+            name="emailFrom"
+            placeholder="e.g. info@yourcompany.com"
+            value={emailFrom}
+            onChange={handleChange}
+          />
+        </Form.Group>
+      );
+    }
+    if (channel === 'SMS' || channel === 'WhatsApp') {
+      return (
+        <Form.Group className="mb-3">
+          <Form.Label>Sender Number</Form.Label>
+          <Form.Control
+            type="tel"
+            name="emailFrom"
+            placeholder="e.g. +919876543210"
+            value={emailFrom}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                emailFrom: formatPhoneNumber(e.target.value),
+              }))
+            }
+          />
+          <Form.Text muted>Include country code. Format: +91XXXXXXXXXX</Form.Text>
+        </Form.Group>
+      );
+    }
+    return null;
+  };
+
   return (
     <Modal show={show} onHide={onHide} size="lg">
       <Modal.Header closeButton>
@@ -108,6 +156,7 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
                 <Form.Control
                   type="text"
                   name="name"
+                  placeholder="e.g. Summer Sale, New Product Launch"
                   value={form.name}
                   onChange={handleChange}
                   required
@@ -122,7 +171,6 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
                   <option value="Email">Email</option>
                   <option value="SMS">SMS</option>
                   <option value="WhatsApp">WhatsApp</option>
-                  <option value="IVR">IVR</option>
                 </Form.Select>
               </Form.Group>
             </Col>
@@ -139,17 +187,7 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
               </Form.Group>
             </Col>
 
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Email From</Form.Label>
-                <Form.Control
-                  type="email"
-                  name="emailFrom"
-                  value={form.emailFrom}
-                  onChange={handleChange}
-                />
-              </Form.Group>
-            </Col>
+            <Col md={6}>{renderSenderField()}</Col>
 
             <Col md={6}>
               <Form.Group className="mb-3">
@@ -160,6 +198,7 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
                     <option key={list.id} value={list.id}>{list.name}</option>
                   ))}
                 </Form.Select>
+                <Form.Text muted>Select the list of users you want to target.</Form.Text>
               </Form.Group>
             </Col>
 
@@ -172,6 +211,7 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
                     <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
                   ))}
                 </Form.Select>
+                <Form.Text muted>Pick a message template to use in this campaign.</Form.Text>
               </Form.Group>
             </Col>
           </Row>
@@ -180,28 +220,43 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
             <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>To</Form.Label>
-                <Form.Control name="to" value={form.to} onChange={handleChange} />
+                <Form.Control
+                  name="to"
+                  placeholder="Separate multiple emails with commas"
+                  value={form.to}
+                  onChange={handleChange}
+                />
               </Form.Group>
             </Col>
             <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>CC</Form.Label>
-                <Form.Control name="cc" value={form.cc} onChange={handleChange} />
+                <Form.Control
+                  name="cc"
+                  placeholder="CC (optional)"
+                  value={form.cc}
+                  onChange={handleChange}
+                />
               </Form.Group>
             </Col>
             <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>BCC</Form.Label>
-                <Form.Control name="bcc" value={form.bcc} onChange={handleChange} />
+                <Form.Control
+                  name="bcc"
+                  placeholder="BCC (optional)"
+                  value={form.bcc}
+                  onChange={handleChange}
+                />
               </Form.Group>
             </Col>
           </Row>
 
           <hr />
-          <h5>Repeat Settings</h5>
-          <Row>
+          <h5 className="mb-3">Repeat Settings</h5>
+          <Row className="align-items-end">
             <Col md={4}>
-              <Form.Group className="mb-3">
+              <Form.Group>
                 <Form.Label>Repeat Type</Form.Label>
                 <Form.Select name="repeatType" value={form.repeatType} onChange={handleChange}>
                   <option value="none">None</option>
@@ -212,7 +267,7 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
               </Form.Group>
             </Col>
             <Col md={4}>
-              <Form.Group className="mb-3">
+              <Form.Group>
                 <Form.Label>Repeat Every</Form.Label>
                 <Form.Control
                   type="number"
@@ -224,22 +279,12 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
               </Form.Group>
             </Col>
             <Col md={4}>
-              <Form.Group className="mb-3">
+              <Form.Group>
                 <Form.Label>Repeat Ends On</Form.Label>
                 <Form.Control
                   type="date"
                   name="repeatEndsOn"
                   value={form.repeatEndsOn}
-                  onChange={handleChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={12}>
-              <Form.Group className="mb-3">
-                <Form.Check
-                  label="Enable Repeat"
-                  name="isRepeat"
-                  checked={form.isRepeat}
                   onChange={handleChange}
                 />
               </Form.Group>
