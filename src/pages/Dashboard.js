@@ -1,8 +1,13 @@
-// src/pages/Dashboard.js
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { FaUser, FaList, FaEnvelope, FaSignOutAlt } from 'react-icons/fa'; // ← Added FaEnvelope
+import {
+  FaUser,
+  FaList,
+  FaEnvelope,
+  FaBullhorn,
+  FaSignOutAlt,
+} from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -15,11 +20,11 @@ const FIRST_PAGE_LIMIT = 1;
 export default function Dashboard() {
   const { token: reduxToken, user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [firstListId, setFirstListId] = useState(null);
 
-  const navigate = useNavigate();
   const token = reduxToken || localStorage.getItem('token');
 
   const axiosCfg = useMemo(
@@ -62,7 +67,7 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-container">
-      {/* ── Sidebar ─────────────────────────────────────────── */}
+      {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
         <button
           className="toggle-btn"
@@ -92,11 +97,19 @@ export default function Dashboard() {
             </NavLink>
 
             <NavLink
-              to="/dashboard/templates" // ✅ New Templates NavLink
+              to="/dashboard/templates"
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
             >
               <FaEnvelope className="icon" />
               <span className="nav-text">Templates</span>
+            </NavLink>
+
+            <NavLink
+              to="/dashboard/campaigns"
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <FaBullhorn className="icon" />
+              <span className="nav-text">Campaigns</span>
             </NavLink>
           </nav>
 
@@ -107,7 +120,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* ── Main area ──────────────────────────────────────── */}
+      {/* Main Content */}
       <main className={`dashboard-main ${sidebarOpen ? '' : 'full'}`}>
         <Outlet context={{ firstListId, user }} />
       </main>
