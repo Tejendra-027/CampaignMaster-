@@ -1,4 +1,3 @@
-// src/pages/Campaigns.js
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import {
@@ -8,20 +7,24 @@ import {
   Files,
   ToggleOn,
   ToggleOff,
+  EyeFill,
 } from 'react-bootstrap-icons';
+import { Modal } from 'react-bootstrap';
 import CampaignFormModal from './CampaignFormModal';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import './Templates.css';
 
 const MySwal = withReactContent(Swal);
-const API = 'http://localhost:3000/api/campaign'; // ✅ correct port
+const API = 'http://localhost:3000/api/campaign';
 
 const Campaigns = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [viewModal, setViewModal] = useState(false);
+  const [viewData, setViewData] = useState({ template: null, list: [] });
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [search, setSearch] = useState('');
@@ -77,11 +80,7 @@ const Campaigns = () => {
 
   const handleStatusToggle = async (campaign) => {
     const newStatus = campaign.status === 'Draft' ? 'Published' : 'Draft';
-    await axios.patch(
-      `${API}/${campaign.id}/status`,
-      { status: newStatus },
-      config
-    );
+    await axios.patch(`${API}/${campaign.id}/status`, { status: newStatus }, config);
     await loadCampaigns();
     MySwal.fire({
       toast: true,
@@ -119,6 +118,19 @@ const Campaigns = () => {
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     setPage(1);
+  };
+
+  const handleView = async (campaign) => {
+    try {
+      const res = await axios.get(`${API}/${campaign.id}/details`, config);
+      setViewData({
+        template: res.data.template || null,
+        list: res.data.list || []
+      });
+      setViewModal(true);
+    } catch (err) {
+      console.error('Failed to load campaign details:', err);
+    }
   };
 
   return (
@@ -179,6 +191,9 @@ const Campaigns = () => {
                   <button className="icon-button copy" onClick={() => handleCopy(campaign.id)} title="Copy Campaign">
                     <Files />
                   </button>
+                  <button className="icon-button view" onClick={() => handleView(campaign)} title="View Details">
+                    <EyeFill />
+                  </button>
                 </td>
               </tr>
             ))
@@ -204,6 +219,42 @@ const Campaigns = () => {
         campaign={selectedCampaign}
         onSuccess={loadCampaigns}
       />
+
+      <Modal show={viewModal} onHide={() => setViewModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Campaign Details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <h5>Template</h5>
+          <p><strong>Name:</strong> {viewData.template?.name}</p>
+          <p><strong>Content:</strong></p>
+          <pre style={{
+            backgroundColor: '#f4f4f4',
+            padding: '10px',
+            borderRadius: '5px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            whiteSpace: 'pre-wrap'
+          }}>
+            {JSON.stringify(viewData.template?.content, null, 2)}
+          </pre>
+
+          <hr />
+
+          <h5>Audience List</h5>
+          {viewData.list.length ? (
+            <ul>
+              {viewData.list.map((item, idx) => (
+                <li key={idx}>{item.email || item.phone || 'No contact info'}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No audience list found.</p>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };
