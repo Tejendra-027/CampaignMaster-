@@ -1,5 +1,3 @@
-// ✅ Paste this entire component in place of your existing CampaignFormModal.js
-
 import React, { useEffect, useState } from 'react';
 import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
 import Swal from 'sweetalert2';
@@ -19,18 +17,19 @@ const defaultForm = {
   to: '',
   cc: '',
   bcc: '',
-  repeatType: 'none',
-  repeatEvery: 0,
-  repeatOn: '',
+  repeatType: 'daily',
+  repeatEvery: 1,
   repeatEndsOn: '',
   isRepeat: false,
   status: 'Draft',
+  monthlyOption: '',  // Added for monthly dropdown
 };
 
 const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
   const [form, setForm] = useState(defaultForm);
   const [lists, setLists] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [repeatOnDays, setRepeatOnDays] = useState([]);
   const isEdit = !!campaign;
 
   const token = localStorage.getItem('token');
@@ -46,8 +45,10 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
   useEffect(() => {
     if (isEdit) {
       setForm({ ...defaultForm, ...campaign });
+      setRepeatOnDays(campaign.repeatOnDays || []);
     } else {
       setForm(defaultForm);
+      setRepeatOnDays([]);
     }
   }, [campaign]);
 
@@ -79,12 +80,13 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const data = { ...form, repeatOnDays };
     try {
       if (isEdit) {
-        await axios.put(`${API_BASE_URL}/${campaign.id}`, form, config);
+        await axios.put(`${API_BASE_URL}/${campaign.id}`, data, config);
         Swal.fire('Updated!', 'Campaign updated successfully', 'success');
       } else {
-        await axios.post(API_BASE_URL, form, config);
+        await axios.post(API_BASE_URL, data, config);
         Swal.fire('Created!', 'Campaign added successfully', 'success');
       }
       onSuccess();
@@ -193,7 +195,7 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
               <Form.Group className="mb-3">
                 <Form.Label>Audience List</Form.Label>
                 <Form.Select name="audienceListId" value={form.audienceListId} onChange={handleChange}>
-                  <option value="">Select List</option>
+                  <option value="">None</option>
                   {lists.map((list) => (
                     <option key={list.id} value={list.id}>{list.name}</option>
                   ))}
@@ -206,7 +208,7 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
               <Form.Group className="mb-3">
                 <Form.Label>Template</Form.Label>
                 <Form.Select name="templateId" value={form.templateId} onChange={handleChange}>
-                  <option value="">Select Template</option>
+                  <option value="">None</option>
                   {templates.map((tpl) => (
                     <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
                   ))}
@@ -222,10 +224,12 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
                 <Form.Label>To</Form.Label>
                 <Form.Control
                   name="to"
-                  placeholder="Separate multiple emails with commas"
                   value={form.to}
                   onChange={handleChange}
                 />
+                <Form.Text className="text-muted">
+                  Separate multiple emails with commas
+                </Form.Text>
               </Form.Group>
             </Col>
             <Col md={4}>
@@ -254,43 +258,148 @@ const CampaignFormModal = ({ show, onHide, campaign, onSuccess }) => {
 
           <hr />
           <h5 className="mb-3">Repeat Settings</h5>
-          <Row className="align-items-end">
+
+          <Row>
             <Col md={4}>
-              <Form.Group>
-                <Form.Label>Repeat Type</Form.Label>
-                <Form.Select name="repeatType" value={form.repeatType} onChange={handleChange}>
-                  <option value="none">None</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group>
+              <Form.Group className="mb-3">
                 <Form.Label>Repeat Every</Form.Label>
-                <Form.Control
-                  type="number"
-                  name="repeatEvery"
-                  min={0}
-                  value={form.repeatEvery}
-                  onChange={handleChange}
-                />
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    name="repeatEvery"
+                    value={form.repeatEvery}
+                    onChange={handleChange}
+                    disabled={form.repeatType === ''}
+                  />
+                  <Form.Select
+                    name="repeatType"
+                    value={form.repeatType}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        repeatType: value,
+                        ...(value !== 'monthly' ? { monthlyOption: '' } : {}),
+                        ...(value === '' ? { repeatEndsOn: '' } : {}),
+                      }));
+                      if (value !== 'weekly') {
+                        setRepeatOnDays([]);
+                      }
+                    }}
+                  >
+                    <option value="">None</option>
+                    <option value="daily">Day</option>
+                    <option value="weekly">Week</option>
+                    <option value="monthly">Month</option>
+                  </Form.Select>
+                </div>
               </Form.Group>
             </Col>
-            <Col md={4}>
-              <Form.Group>
-                <Form.Label>Repeat Ends On</Form.Label>
-                <Form.Control
-                  type="date"
-                  name="repeatEndsOn"
-                  value={form.repeatEndsOn}
-                  onChange={handleChange}
-                />
+
+            {/* Show this dropdown only if repeatType === monthly */}
+            {form.repeatType === 'monthly' && (
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Monthly Repeat Option</Form.Label>
+                  <Form.Select
+                    name="monthlyOption"
+                    value={form.monthlyOption || ''}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        monthlyOption: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Select Option</option>
+                    <option value="day_23">Monthly on day 23</option>
+                    <option value="4th_wednesday">Monthly on the 4th Wednesday</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            )}
+
+            <Col md={8}>
+              <Form.Group className="mb-3">
+                <Form.Label>Ends</Form.Label>
+                <div className="d-flex align-items-center gap-3">
+                  <Form.Check
+                    type="radio"
+                    label="Never"
+                    name="repeatEnds"
+                    id="repeatEndsNever"
+                    checked={!form.repeatEndsOn}
+                    onChange={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        repeatEndsOn: '',
+                      }))
+                    }
+                    disabled={form.repeatType === ''}
+                  />
+                  <Form.Check
+                    type="radio"
+                    label="On"
+                    name="repeatEnds"
+                    id="repeatEndsOn"
+                    checked={!!form.repeatEndsOn}
+                    onChange={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        repeatEndsOn: new Date().toISOString().split('T')[0],
+                      }))
+                    }
+                    disabled={form.repeatType === ''}
+                  />
+                  <Form.Control
+                    type="date"
+                    name="repeatEndsOn"
+                    value={form.repeatEndsOn}
+                    onChange={handleChange}
+                    disabled={!form.repeatEndsOn || form.repeatType === ''}
+                    style={{ maxWidth: 200 }}
+                  />
+                </div>
               </Form.Group>
             </Col>
           </Row>
+
+          {form.repeatType === 'weekly' && (
+            <Row>
+              <Col>
+                <Form.Group >
+                  <Form.Label >Repeat On</Form.Label>
+                  <div className="d-flex flex-wrap gap-2">
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
+                      const dayValues = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                      const value = dayValues[index];
+                      const selected = repeatOnDays.includes(value);
+                      return (
+                        <Form.Check
+                          inline
+                          type="checkbox"
+                          key={value}
+                          id={`day-${value}`}
+                          label={day}
+                          checked={selected}
+                          onChange={() => {
+                            setRepeatOnDays((prev) =>
+                              prev.includes(value)
+                                ? prev.filter((d) => d !== value)
+                                : [...prev, value]
+                            );
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </Form.Group>
+              </Col>
+            </Row>
+          )}
         </Modal.Body>
+
         <Modal.Footer>
           <Button variant="secondary" onClick={onHide}>Cancel</Button>
           <Button variant="primary" type="submit">{isEdit ? 'Update' : 'Create'}</Button>
